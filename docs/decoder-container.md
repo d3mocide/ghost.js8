@@ -1,6 +1,6 @@
 # Decoder container
 
-`decoder/` builds the image that runs the **native JS8Call** decoder headless.
+`decoder/Dockerfile` (build context: repository root) builds the image that runs the **native JS8Call** decoder headless.
 One container = one decoder slot = one receiver being decoded.
 
 ## Pins
@@ -28,7 +28,7 @@ freetype, harfbuzz, libusb).
 ### Building behind a TLS-intercepting proxy
 
 ```sh
-docker build --secret id=extra_ca,src=/path/to/full-ca-bundle.crt -t ghostjs8-decoder decoder/
+docker build --secret id=extra_ca,src=/path/to/full-ca-bundle.crt -f decoder/Dockerfile -t ghostjs8-decoder .
 ```
 
 The secret is used only by the download step in the `fetch` stage and never lands
@@ -43,6 +43,7 @@ in the image. Integrity comes from the SHA-256 check, not TLS.
 | `xvfb` | virtual display `:99` (Qt xcb platform) |
 | `pulseaudio` | user-mode daemon, graph from `/etc/ghostjs8/pulse.pa` |
 | `js8call` | `ghost-start-js8call`: renders `JS8Call.ini`, waits for X + Pulse, execs `/opt/js8call/usr/bin/JS8Call` (not `AppRun`, so the process is named `JS8Call`) |
+| `agent` | decoder-agent (`/opt/agent`, a uv-locked venv with only `websockets`): bridge link on `:8074/agent`, PCM → `pacat` → `ghost_rx`, JS8 UDP API owner, health facts |
 | `fatal` (event listener) | on any `PROCESS_STATE_FATAL`, writes `/run/ghost/fatal` and stops supervisord |
 
 A program that dies 4 times within its `startsecs` goes FATAL; the container
@@ -100,11 +101,26 @@ datagrams).
 | `CLOSE` | sent on shutdown |
 
 `AcceptUDPRequests=true` lets the agent query JS8Call; the agent sends only an
-allowlist of read-only requests and never any `TX.*` type.
+allowlist of read-only requests (`RX.GET_CALL_ACTIVITY`, `STATION.GET_CALLSIGN`)
+and can never construct a `TX.*` request.
+
+**`RX.SPOT` is only emitted when spotting to reporting networks is on**
+(`processSpots()` returns early otherwise). We keep spotting off, so the agent
+polls `RX.GET_CALL_ACTIVITY` every 15 s; the `RX.CALL_ACTIVITY` reply maps each
+heard callsign to `{SNR, GRID, UTC}`. A matching `_ID` in a reply also proves
+an API round trip (health: "decoder API responding").
+
+## decoder-agent link
+
+See `bridge/src/ghostjs8/decoders/js8call_native/agent_protocol.py`. The bridge
+sends binary PCM (mono s16le 12 kHz); the agent sends JSON `js8` (verbatim
+JS8Call messages) and `health` frames every 3 s. Audio queues are bounded at
+both ends (~2 s) and drop oldest; queued audio is discarded on reconnect,
+because JS8 needs live, time-aligned audio.
 
 ## Health
 
-`ghost-healthcheck` (Docker `HEALTHCHECK`) fails unless all critical programs
+`ghost-healthcheck` (Docker `HEALTHCHECK`) fails unless all critical programs (xvfb, pulseaudio, agent, js8call)
 are RUNNING, X answers, the Pulse graph exists, and JS8Call holds an
 **uncorked capture stream on `ghost_rx_in`** (matched by
 `application.process.binary=JS8Call`).

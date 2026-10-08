@@ -18,7 +18,8 @@ KiwiSDR ─ SND ─→ bridge ─→ decoder-agent ─→ PulseAudio null sink �
 
 | Path | What |
 |---|---|
-| `bridge/` | Python package `ghostjs8` (uv project). Receiver adapters, decoder adapters, session orchestration, HTTP/WS API. |
+| `bridge/` | Python package `ghostjs8` (uv project; extra `bridge` = FastAPI/uvicorn/pydantic). `python -m ghostjs8 {bridge,agent,fake-kiwi,acceptance}`. |
+| `bridge/src/ghostjs8/sim/` | `fake_kiwi` (simulated KiwiSDR) and `acceptance` (browser-like test client) |
 | `bridge/src/ghostjs8/receivers/` | Receiver adapter interface + KiwiSDR implementation |
 | `bridge/src/ghostjs8/decoders/` | Decoder adapter interface + native JS8Call implementation (incl. the in-container decoder-agent) |
 | `bridge/src/ghostjs8/session/` | Session orchestration, health state machine, staleness tracking |
@@ -38,7 +39,7 @@ Run from the repo root.
 
 | Command | Does |
 |---|---|
-| `make setup` | `uv sync --locked` (bridge) + `npm ci` (web) |
+| `make setup` | `uv sync --locked --all-extras` (bridge) + `npm ci` (web) |
 | `make lint` | ruff check + ruff format --check + eslint + prettier --check |
 | `make typecheck` | mypy --strict + svelte-check + tsc |
 | `make test` | pytest + vitest |
@@ -46,7 +47,8 @@ Run from the repo root.
 | `make contract` | regenerate JSON Schema + TS types from Pydantic (milestone 6) |
 | `make contract-check` | fail if generated files are out of date |
 | `make decoder-image` | build `ghostjs8-decoder:dev` (set `EXTRA_CA=/path/bundle.crt` behind a TLS proxy) |
-| `make acceptance` | real-recording end-to-end test in Docker (milestone 5) |
+| `make fixtures` | fetch + SHA-256-verify the upstream test recording into `tools/fixtures/cache/` |
+| `make acceptance` | real-recording end-to-end test in Docker (`docker-compose.test.yml`, isolated network) |
 
 Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
 [`docs/SECURITY-UPDATES.md`](docs/SECURITY-UPDATES.md) once written).
@@ -98,6 +100,12 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
 - `RX.DIRECTED` `value` omits the sender (it is in `params.FROM`) and ends with
   the EOT marker `♢`. `RX.ACTIVITY` `value` carries the full `FROM: ...` line.
   `STATION.STATUS` arrives at ~2 Hz — ignore it. `PING` arrives every 15 s.
+- JS8Call only emits `RX.SPOT` when spotting to PSKReporter is enabled (we keep
+  it off). Heard stations come from the agent polling `RX.GET_CALL_ACTIVITY`
+  (reply `RX.CALL_ACTIVITY`: callsign -> SNR/GRID/UTC).
+- The decoder-agent may only send `ALLOWED_REQUESTS` to JS8Call (read-only);
+  a test asserts `TX.*` requests raise.
+- `uv add/remove` re-syncs without extras; run `uv sync --all-extras` after.
 - Building behind a TLS-intercepting proxy: pass the full CA bundle as build
   secret `extra_ca`; never disable verification.
 - JS8 decoding depends on UTC alignment. The host must be NTP-synced; keep

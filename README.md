@@ -5,8 +5,10 @@
 Passive, quiet, persistent listening on HF digital traffic — inspired by
 S2 Underground's GhostNet. A d3FRAG Networks project.
 
-> Status: **milestone 1 — skeleton.** Nothing decodes yet. See
-> [`docs/architecture.md`](docs/architecture.md) for the design and milestone plan.
+> Status: **milestone 5 — decode path proven.** `make acceptance` replays a real
+> JS8 recording through KiwiSDR framing into native JS8Call and receives the
+> decode on the browser WebSocket. The web UI is next. See
+> [`docs/architecture.md`](docs/architecture.md).
 
 ## How it works
 
