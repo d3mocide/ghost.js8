@@ -234,9 +234,10 @@
   }
   .head h1 {
     margin: 0 0 var(--g-space-1);
+    font-family: var(--g-font-display);
     font-size: var(--g-text-xxl);
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-weight: 400;
+    letter-spacing: 0.02em;
   }
   .meta {
     color: var(--g-text-muted);

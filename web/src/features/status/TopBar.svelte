@@ -19,7 +19,7 @@
 
 <div class="topbar" role="banner">
   <div class="inner">
-    <a class="brand" href="#/" aria-label="ghost.js8 home"><Logo size={30} /></a>
+    <a class="brand" href="#/" aria-label="ghost.js8 home"><Logo size={38} /></a>
     <span class="tagline">JS8 listening post</span>
     <span class="spacer"></span>
     <button
@@ -88,7 +88,10 @@
     padding-left: var(--g-space-3);
     border-left: 1px solid var(--g-border);
     color: var(--g-text-muted);
+    font-family: var(--g-font-display);
     font-size: var(--g-text-s);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
   .spacer {
     flex: 1;

@@ -114,10 +114,11 @@
     gap: var(--g-space-2);
   }
   .freq {
-    font-size: var(--g-text-xxl);
-    font-weight: 600;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
+    font-family: var(--g-font-display);
+    font-size: 2.6rem;
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: 0;
     background: var(--g-accent);
     -webkit-background-clip: text;
     background-clip: text;

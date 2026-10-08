@@ -85,10 +85,11 @@
   }
   h2 {
     margin: 0;
-    font-family: var(--g-font-ui);
-    font-size: var(--g-text-m);
-    font-weight: 600;
-    letter-spacing: 0.005em;
+    font-family: var(--g-font-display);
+    font-size: 1.0625rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--g-text);
     white-space: nowrap;
     overflow: hidden;

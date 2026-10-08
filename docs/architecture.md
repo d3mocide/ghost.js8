@@ -84,7 +84,7 @@ receiver connected · audio fresh · waterfall fresh · last decode timestamp.
 | D8b | Idle | keep decoding with no browsers attached; `IDLE_DISCONNECT_MINUTES` (0 = never) |
 | D9 | Auth | reverse-proxy-fronted; bridge internal-only; WS Origin allowlist |
 | D10 | License | GPL-3.0-or-later |
-| D11 | Palette | "ghost signal": frosted glass over a deep solid gradient (ink → indigo → plum) with a live ASCII backdrop (drifting static, radio rings with the callsign on each decode, a pulse per 15 s JS8 slot, an occasional ghost); "still" mode and reduced motion/transparency honoured. Aqua→violet accent, mint for live signal. Default waterfall colormap "spectre" (mirrored by recorded-net PNGs); viridis/inferno/grey selectable |
+| D11 | Palette | "ghost signal": frosted glass over a deep solid gradient (ink → indigo → plum) with a live ASCII backdrop (drifting static, radio rings with the callsign on each decode, a pulse per 15 s JS8 slot, an occasional ghost); "still" mode and reduced motion/transparency honoured. Aqua→violet accent, mint for live signal. Type: Share Tech Mono for the wordmark, panel titles and big readouts; Space Grotesk for UI text; JetBrains Mono for data. Logo: line-art stencil ghost (bridges cut into the outline, radio-wave hem, slit eyes). Default waterfall colormap "spectre" (mirrored by recorded-net PNGs); viridis/inferno/grey selectable |
 | D12 | Waterfall | zoomed around the dial by default, zoomable |
 | — | Web server | nginx-unprivileged (lighter than Caddy; TLS is the outer proxy's job) |
 | — | Defaults | Python 3.12, Node 22 LTS, supervisord + fatal-exit listener, passband 100–3000 Hz USB, Kiwi ident `ghost.js8`, reconnect backoff 5 s–5 min jittered |

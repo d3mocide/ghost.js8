@@ -55,6 +55,8 @@
 
   /* type */
   --g-font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  /* display: wordmark, panel titles, big readouts. Terminal bite, used large. */
+  --g-font-display: 'Share Tech Mono', var(--g-font-mono);
   --g-font-ui: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --g-text-xs: 0.6875rem;
   --g-text-s: 0.8125rem;

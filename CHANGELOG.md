@@ -31,5 +31,8 @@ First MVP.
   The redesign also adds a sticky top bar and a hero strip showing the
   frequency, the situation and decodes/stations/last decode. The waterfall
   colormap was retuned to match.
+- New mark and wordmark: a stencil line-art ghost with a radio-wave hem and
+  slit eyes, and `ghost.js8_` set in Share Tech Mono with a blinking cursor.
+  Panel titles and the frequency readout use the same terminal face.
 - Net log viewer (`#/net/<id>`) with click-to-seek audio, and a live
   @GSTFLASH alert banner. Timeline tags for FLASH/GN/DIR traffic.
