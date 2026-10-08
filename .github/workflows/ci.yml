@@ -53,3 +53,21 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build
+
+  decoder-image:
+    name: decoder image (build + boot + healthy)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build (verifies JS8Call SHA-256)
+        run: docker build -t ghostjs8-decoder:ci decoder/
+      - name: Boot and wait for healthy
+        run: |
+          docker run -d --name dec ghostjs8-decoder:ci
+          for i in $(seq 1 30); do
+            s=$(docker inspect dec --format '{{.State.Health.Status}}')
+            echo "health=$s"; [ "$s" = healthy ] && exit 0; sleep 5
+          done
+          docker logs dec; exit 1

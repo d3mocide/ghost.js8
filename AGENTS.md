@@ -45,6 +45,7 @@ Run from the repo root.
 | `make check` | all of the above |
 | `make contract` | regenerate JSON Schema + TS types from Pydantic (milestone 6) |
 | `make contract-check` | fail if generated files are out of date |
+| `make decoder-image` | build `ghostjs8-decoder:dev` (set `EXTRA_CA=/path/bundle.crt` behind a TLS proxy) |
 | `make acceptance` | real-recording end-to-end test in Docker (milestone 5) |
 
 Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
@@ -87,6 +88,18 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
 - JS8Call's own audio output goes to a separate **discard** sink.
 - JS8Call's UDP API: the agent listens on localhost and **learns the reply port**
   from incoming datagrams.
+- JS8Call blocks on a settings dialog if `MyCall` or `MyGrid` is empty; the
+  template sets receive-only placeholders. `PSKReporter` and `SpotToAPRS`
+  **default to on** — they are forced off so we never publish spots.
+- The decode filter (`[WideGraph] FilterCenter/FilterWidth`) **is** the decode
+  range. It must cover the receiver passband.
+- `AppRun` is a symlink; we exec `/opt/js8call/usr/bin/JS8Call` so the process
+  is named `JS8Call` (healthcheck and `pkill -x JS8Call` rely on it).
+- `RX.DIRECTED` `value` omits the sender (it is in `params.FROM`) and ends with
+  the EOT marker `♢`. `RX.ACTIVITY` `value` carries the full `FROM: ...` line.
+  `STATION.STATUS` arrives at ~2 Hz — ignore it. `PING` arrives every 15 s.
+- Building behind a TLS-intercepting proxy: pass the full CA bundle as build
+  secret `extra_ca`; never disable verification.
 - JS8 decoding depends on UTC alignment. The host must be NTP-synced; keep
   bridge-side audio buffering small.
 - `uv` caches builds: if the editable install looks empty after creating new

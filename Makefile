@@ -6,7 +6,7 @@ SHELL := /bin/bash
 UV  := uv --directory bridge
 NPM := npm --prefix web
 
-.PHONY: setup lint typecheck test check contract contract-check acceptance
+.PHONY: setup lint typecheck test check contract contract-check acceptance decoder-image
 
 setup:
 	$(UV) sync --locked
@@ -35,3 +35,10 @@ contract-check:
 
 acceptance:
 	@echo "acceptance test lands in milestone 5" >&2; exit 1
+
+comma := ,
+EXTRA_CA ?=
+DOCKER_SECRET := $(if $(EXTRA_CA),--secret id=extra_ca$(comma)src=$(EXTRA_CA),)
+
+decoder-image:
+	docker build $(DOCKER_SECRET) -t ghostjs8-decoder:dev decoder/
