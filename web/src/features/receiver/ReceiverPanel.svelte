@@ -84,6 +84,9 @@
     {#if current}
       <span class="mono host">{current.name ?? current.host}</span>
       <span class="mono muted">{current.host}:{current.port}</span>
+      <span class="mono muted" data-testid="watchers"
+        >{app.state.session?.subscribers ?? 0} watching</span
+      >
     {:else}
       <span class="muted">No receiver selected.</span>
     {/if}
