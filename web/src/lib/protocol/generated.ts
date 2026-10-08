@@ -9,7 +9,7 @@
  * via the `definition` "ServerMessage".
  */
 export type ServerMessage =
-  Hello | Health | Session | Decode | Station | History | ReceiverStatus | Error | Pong;
+  Hello | Health | Session | Decode | Station | History | ReceiverStatus | GhostNet | Error | Pong;
 /**
  * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
  * via the `definition` "ClientMessage".
@@ -183,6 +183,39 @@ export interface ReceiverStatus {
   };
 }
 /**
+ * GhostNet autopilot status (absent features report enabled = false).
+ *
+ * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
+ * via the `definition` "GhostNet".
+ */
+export interface GhostNet {
+  v: 1;
+  type: 'ghostnet';
+  enabled: boolean;
+  region: ('na' | 'eu' | 'aus') | null;
+  home_grid: string | null;
+  mode: 'off' | 'window' | 'parked' | 'paused';
+  window: GhostNetWindow | null;
+  next_window: GhostNetWindow | null;
+  recording_net_id: string | null;
+  receiver_reason: string;
+  paused_until: string | null;
+  detail: string;
+}
+/**
+ * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
+ * via the `definition` "GhostNetWindow".
+ */
+export interface GhostNetWindow {
+  id: string;
+  label: string;
+  kind: 'net' | 'bridge';
+  band: string;
+  dial_hz: number;
+  start: string;
+  end: string;
+}
+/**
  * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
  * via the `definition` "Error".
  */
@@ -263,6 +296,46 @@ export interface Subscribe {
 export interface Ping {
   v: 1;
   type: 'ping';
+}
+/**
+ * A recorded net with its traffic (GET /api/nets/{id}).
+ *
+ * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
+ * via the `definition` "NetLog".
+ */
+export interface NetLog {
+  summary: NetSummary;
+  decodes: Decode[];
+  stations: Station[];
+  waterfall_seconds: number;
+  waterfall_offset_lo_hz: number;
+  waterfall_offset_hi_hz: number;
+}
+/**
+ * One recorded GhostNet window (GET /api/nets).
+ *
+ * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
+ * via the `definition` "NetSummary".
+ */
+export interface NetSummary {
+  id: string;
+  window_id: string;
+  label: string;
+  kind: 'net' | 'bridge';
+  band: string;
+  dial_hz: number;
+  scheduled_start: string;
+  scheduled_end: string;
+  started: string;
+  ended: string | null;
+  receiver: string | null;
+  receiver_reason: string;
+  decode_count: number;
+  station_count: number;
+  has_audio: boolean;
+  has_waterfall: boolean;
+  flash_count: number;
+  operator_override: boolean;
 }
 /**
  * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema

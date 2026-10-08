@@ -3,6 +3,8 @@
 - ``GET /healthz``  liveness: the bridge process is serving
 - ``GET /readyz``   readiness: full component health (200 when listening, 503 otherwise)
 - ``GET /api/receivers``  cached public receiver directory
+- ``GET /api/nets``, ``/api/nets/{id}``, ``/api/nets/{id}/waterfall.png``,
+  ``/api/nets/{id}/audio.flac``  recorded GhostNet windows
 - ``WS  /ws``       the browser protocol (see contract/messages.py, docs/protocol.md)
 """
 
@@ -14,13 +16,15 @@ import ipaddress
 import json
 import logging
 import re
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Sequence
+from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from ghostjs8.api.hub import Client, HubFull
+from ghostjs8.api.nets import nets_router
 from ghostjs8.contract.messages import (
     ClientMessage,
     DisconnectReceiver,
@@ -97,19 +101,25 @@ def create_app(
     *,
     directory: Directory | None = None,
     clock: Clock | None = None,
+    background: Sequence[Awaitable[None]] = (),
 ) -> FastAPI:
     clk = clock or SystemClock()
     receivers = directory or Directory(source=settings.directory_url)
+    store = station.store
+    recordings = Path(settings.recordings_dir)
 
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        task = asyncio.create_task(station.run(), name="station")
+        tasks = [asyncio.create_task(station.run(), name="station")]
+        tasks += [asyncio.ensure_future(job) for job in background]
         try:
             yield
         finally:
-            task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
+            for task in tasks:
+                task.cancel()
+            for task in tasks:
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
 
     app = FastAPI(title="ghost.js8 bridge", lifespan=lifespan, docs_url=None, redoc_url=None)
 
@@ -128,6 +138,8 @@ def create_app(
     @app.get("/api/receivers")
     async def api_receivers() -> JSONResponse:
         return JSONResponse(json.loads((await receivers.get()).model_dump_json()))
+
+    app.include_router(nets_router(store, recordings))
 
     @app.websocket("/ws")
     async def ws_endpoint(ws: WebSocket) -> None:
@@ -241,3 +253,4 @@ async def _handle(
         )
     else:
         station.disconnect_receiver()
+    station.operator_changed()

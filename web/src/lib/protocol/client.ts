@@ -15,6 +15,7 @@ const SERVER_TYPES = new Set<string>([
   'decode',
   'station',
   'receiver_status',
+  'ghostnet',
   'error',
   'pong',
 ]);

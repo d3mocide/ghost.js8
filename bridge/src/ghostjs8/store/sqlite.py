@@ -10,7 +10,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from ghostjs8.contract.messages import Decode, Station
+from ghostjs8.contract.messages import Decode, NetSummary, Station
 from ghostjs8.util.clock import Clock
 
 SCHEMA = """
@@ -30,6 +30,18 @@ CREATE TABLE IF NOT EXISTS stations (
     heard_count INTEGER NOT NULL DEFAULT 1
 );
 CREATE INDEX IF NOT EXISTS stations_heard ON stations(last_heard_utc);
+CREATE TABLE IF NOT EXISTS nets (
+    id TEXT PRIMARY KEY,
+    started TEXT NOT NULL,
+    json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS nets_started ON nets(started);
+CREATE TABLE IF NOT EXISTS net_decodes (
+    id INTEGER PRIMARY KEY,
+    net_id TEXT NOT NULL REFERENCES nets(id) ON DELETE CASCADE,
+    json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS net_decodes_net ON net_decodes(net_id);
 """
 
 
@@ -113,6 +125,48 @@ class Store:
             (since, limit),
         ).fetchall()
         return [_station(r) for r in rows]
+
+    # ------------------------------------------------------------------ nets
+
+    def save_net(self, net: NetSummary) -> None:
+        self._db.execute(
+            "INSERT INTO nets (id, started, json) VALUES (?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET json = excluded.json",
+            (net.id, _iso(net.started), net.model_dump_json()),
+        )
+
+    def net(self, net_id: str) -> NetSummary | None:
+        row = self._db.execute("SELECT json FROM nets WHERE id = ?", (net_id,)).fetchone()
+        return NetSummary.model_validate_json(row[0]) if row else None
+
+    def nets(self, limit: int = 100) -> list[NetSummary]:
+        rows = self._db.execute(
+            "SELECT json FROM nets ORDER BY started DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [NetSummary.model_validate_json(r[0]) for r in rows]
+
+    def add_net_decode(self, net_id: str, decode: Decode) -> None:
+        self._db.execute(
+            "INSERT INTO net_decodes (net_id, json) VALUES (?, ?)",
+            (net_id, decode.model_dump_json()),
+        )
+
+    def net_decodes(self, net_id: str) -> list[Decode]:
+        rows = self._db.execute(
+            "SELECT json FROM net_decodes WHERE net_id = ? ORDER BY id", (net_id,)
+        ).fetchall()
+        return [Decode.model_validate_json(r[0]) for r in rows]
+
+    def expired_nets(self, older_than: timedelta) -> list[str]:
+        cutoff = _iso(self._clock.utc_now() - older_than)
+        return [
+            r[0]
+            for r in self._db.execute("SELECT id FROM nets WHERE started < ?", (cutoff,)).fetchall()
+        ]
+
+    def delete_net(self, net_id: str) -> None:
+        self._db.execute("DELETE FROM net_decodes WHERE net_id = ?", (net_id,))
+        self._db.execute("DELETE FROM nets WHERE id = ?", (net_id,))
 
     def prune(self) -> int:
         cutoff = _iso(self._clock.utc_now() - self._retention)

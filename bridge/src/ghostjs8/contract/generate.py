@@ -25,6 +25,7 @@ SERVER: list[type[BaseModel]] = [
     m.Station,
     m.History,
     m.ReceiverStatus,
+    m.GhostNet,
     m.Error,
     m.Pong,
 ]
@@ -36,7 +37,7 @@ CLIENT: list[type[BaseModel]] = [
     m.Subscribe,
     m.Ping,
 ]
-HTTP: list[type[BaseModel]] = [m.ReceiverDirectory]
+HTTP: list[type[BaseModel]] = [m.ReceiverDirectory, m.NetSummary, m.NetLog]
 
 
 def _strip_titles(node: object) -> None:

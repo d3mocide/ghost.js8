@@ -323,6 +323,165 @@
       "title": "Error",
       "type": "object"
     },
+    "GhostNet": {
+      "additionalProperties": false,
+      "description": "GhostNet autopilot status (absent features report enabled = false).",
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "ghostnet",
+          "default": "ghostnet",
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "enum": [
+                "na",
+                "eu",
+                "aus"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "home_grid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mode": {
+          "enum": [
+            "off",
+            "window",
+            "parked",
+            "paused"
+          ],
+          "type": "string"
+        },
+        "window": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GhostNetWindow"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "next_window": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GhostNetWindow"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recording_net_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "receiver_reason": {
+          "type": "string"
+        },
+        "paused_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "detail",
+        "enabled",
+        "home_grid",
+        "mode",
+        "next_window",
+        "paused_until",
+        "receiver_reason",
+        "recording_net_id",
+        "region",
+        "type",
+        "v",
+        "window"
+      ],
+      "title": "GhostNet",
+      "type": "object"
+    },
+    "GhostNetWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "net",
+            "bridge"
+          ],
+          "type": "string"
+        },
+        "band": {
+          "type": "string"
+        },
+        "dial_hz": {
+          "type": "integer"
+        },
+        "start": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "end": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "band",
+        "dial_hz",
+        "end",
+        "id",
+        "kind",
+        "label",
+        "start"
+      ],
+      "title": "GhostNetWindow",
+      "type": "object"
+    },
     "Health": {
       "additionalProperties": false,
       "description": "Truthful readiness: distinct components, each with evidence timestamps.",
@@ -484,6 +643,150 @@
         "waterfall_max_fps"
       ],
       "title": "Limits",
+      "type": "object"
+    },
+    "NetLog": {
+      "additionalProperties": false,
+      "description": "A recorded net with its traffic (GET /api/nets/{id}).",
+      "properties": {
+        "summary": {
+          "$ref": "#/$defs/NetSummary"
+        },
+        "decodes": {
+          "items": {
+            "$ref": "#/$defs/Decode"
+          },
+          "type": "array"
+        },
+        "stations": {
+          "items": {
+            "$ref": "#/$defs/Station"
+          },
+          "type": "array"
+        },
+        "waterfall_seconds": {
+          "type": "integer"
+        },
+        "waterfall_offset_lo_hz": {
+          "type": "integer"
+        },
+        "waterfall_offset_hi_hz": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "decodes",
+        "stations",
+        "summary",
+        "waterfall_offset_hi_hz",
+        "waterfall_offset_lo_hz",
+        "waterfall_seconds"
+      ],
+      "title": "NetLog",
+      "type": "object"
+    },
+    "NetSummary": {
+      "additionalProperties": false,
+      "description": "One recorded GhostNet window (GET /api/nets).",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "window_id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "net",
+            "bridge"
+          ],
+          "type": "string"
+        },
+        "band": {
+          "type": "string"
+        },
+        "dial_hz": {
+          "type": "integer"
+        },
+        "scheduled_start": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "scheduled_end": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "started": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "ended": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "receiver": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "receiver_reason": {
+          "type": "string"
+        },
+        "decode_count": {
+          "type": "integer"
+        },
+        "station_count": {
+          "type": "integer"
+        },
+        "has_audio": {
+          "type": "boolean"
+        },
+        "has_waterfall": {
+          "type": "boolean"
+        },
+        "flash_count": {
+          "type": "integer"
+        },
+        "operator_override": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "band",
+        "decode_count",
+        "dial_hz",
+        "ended",
+        "flash_count",
+        "has_audio",
+        "has_waterfall",
+        "id",
+        "kind",
+        "label",
+        "operator_override",
+        "receiver",
+        "receiver_reason",
+        "scheduled_end",
+        "scheduled_start",
+        "started",
+        "station_count",
+        "window_id"
+      ],
+      "title": "NetSummary",
       "type": "object"
     },
     "Ping": {
@@ -781,6 +1084,7 @@
         "mapping": {
           "decode": "#/$defs/Decode",
           "error": "#/$defs/Error",
+          "ghostnet": "#/$defs/GhostNet",
           "health": "#/$defs/Health",
           "hello": "#/$defs/Hello",
           "history": "#/$defs/History",
@@ -812,6 +1116,9 @@
         },
         {
           "$ref": "#/$defs/ReceiverStatus"
+        },
+        {
+          "$ref": "#/$defs/GhostNet"
         },
         {
           "$ref": "#/$defs/Error"

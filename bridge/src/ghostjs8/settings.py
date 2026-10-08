@@ -14,6 +14,13 @@ def _int(env: Mapping[str, str], key: str, default: int) -> int:
     return int(raw) if raw else default
 
 
+def _bool(env: Mapping[str, str], key: str, *, default: bool) -> bool:
+    raw = env.get(key, "").strip().lower()
+    if not raw:
+        return default
+    return raw in ("1", "true", "yes", "on")
+
+
 @dataclass(frozen=True)
 class Settings:
     listen_host: str = "0.0.0.0"  # noqa: S104 - container service on an internal network
@@ -34,6 +41,15 @@ class Settings:
     waterfall_max_fps: float = 10.0
     allow_private_receivers: bool = True  # LAN Kiwis are common; loopback/link-local always refused
     directory_url: str = "http://rx.linkfanel.net/kiwisdr_com.js"
+    # GhostNet autopilot (docs/ghostnet.md)
+    ghostnet: bool = False
+    ghostnet_region: str = ""  # na | eu | aus
+    home_grid: str = ""  # Maidenhead grid used to pick a nearby receiver
+    ghostnet_preroll_minutes: int = 10
+    ghostnet_record_audio: bool = True
+    ghostnet_park: bool = True
+    recordings_dir: str = "/data/nets"
+    net_retention_days: int = 90
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -66,7 +82,14 @@ class Settings:
             retention_days=_int(e, "GHOSTJS8_RETENTION_DAYS", 30),
             idle_disconnect_minutes=_int(e, "GHOSTJS8_IDLE_DISCONNECT_MINUTES", 0),
             waterfall_max_fps=float(e.get("GHOSTJS8_WATERFALL_MAX_FPS", "10") or 10),
-            allow_private_receivers=e.get("GHOSTJS8_ALLOW_PRIVATE_RECEIVERS", "true").lower()
-            in ("1", "true", "yes"),
+            allow_private_receivers=_bool(e, "GHOSTJS8_ALLOW_PRIVATE_RECEIVERS", default=True),
             directory_url=e.get("GHOSTJS8_DIRECTORY_URL", cls.directory_url),
+            ghostnet=_bool(e, "GHOSTJS8_GHOSTNET", default=False),
+            ghostnet_region=e.get("GHOSTJS8_GHOSTNET_REGION", "").strip().lower(),
+            home_grid=e.get("GHOSTJS8_HOME_GRID", "").strip(),
+            ghostnet_preroll_minutes=_int(e, "GHOSTJS8_GHOSTNET_PREROLL_MINUTES", 10),
+            ghostnet_record_audio=_bool(e, "GHOSTJS8_GHOSTNET_RECORD_AUDIO", default=True),
+            ghostnet_park=_bool(e, "GHOSTJS8_GHOSTNET_PARK", default=True),
+            recordings_dir=e.get("GHOSTJS8_RECORDINGS_DIR", cls.recordings_dir),
+            net_retention_days=_int(e, "GHOSTJS8_NET_RETENTION_DAYS", 90),
         )

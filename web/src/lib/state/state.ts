@@ -5,6 +5,7 @@
 import type {
   Decode,
   Error as ServerError,
+  GhostNet,
   Health,
   Hello,
   ReceiverStatus,
@@ -28,6 +29,7 @@ export interface AppState {
   readonly session: Session | null;
   readonly health: Health | null;
   readonly receiverStatus: ReceiverStatus | null;
+  readonly ghostnet: GhostNet | null;
   readonly decodes: readonly DecodeRow[]; // oldest first
   readonly stations: Readonly<Record<string, Station>>;
   readonly lastError: ServerError | null;
@@ -43,6 +45,7 @@ export const initialState: AppState = {
   session: null,
   health: null,
   receiverStatus: null,
+  ghostnet: null,
   decodes: [],
   stations: {},
   lastError: null,
@@ -132,6 +135,8 @@ function reduceServer(state: AppState, m: ServerMessage, now: number): AppState 
       return { ...state, health: m };
     case 'receiver_status':
       return { ...state, receiverStatus: m };
+    case 'ghostnet':
+      return { ...state, ghostnet: m };
     case 'decode':
       return { ...state, decodes: addDecodes(state.decodes, [m], now) };
     case 'station':

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 import sys
+from dataclasses import replace
 
 
 def _bridge() -> None:
@@ -12,7 +14,9 @@ def _bridge() -> None:
     from ghostjs8.api.hub import Hub
     from ghostjs8.decoders.base import DecoderSink
     from ghostjs8.decoders.js8call_native.adapter import Js8CallNativeDecoder
+    from ghostjs8.ghostnet.pilot import build_pilot, disabled_status
     from ghostjs8.receivers.base import ReceiverSink, Tuning
+    from ghostjs8.receivers.directory import Directory
     from ghostjs8.receivers.kiwisdr.client import KiwiEndpoint, KiwiReceiver
     from ghostjs8.session.station import (
         DecoderHandle,
@@ -28,11 +32,15 @@ def _bridge() -> None:
 
     settings = Settings.from_env()
     configure("bridge", settings.log_level, settings.log_format)
+    log = logging.getLogger("ghostjs8")
     clock = SystemClock()
 
     def make_receiver(target: ReceiverTarget, tuning: Tuning, sink: ReceiverSink) -> ReceiverHandle:
         return KiwiReceiver(
-            KiwiEndpoint(target.host, target.port, target.password), tuning, sink, clock=clock
+            KiwiEndpoint(target.host, target.port, target.password, tls=target.tls),
+            tuning,
+            sink,
+            clock=clock,
         )
 
     def make_decoder(sink: DecoderSink) -> DecoderHandle:
@@ -58,8 +66,25 @@ def _bridge() -> None:
             idle_disconnect_s=settings.idle_disconnect_minutes * 60.0,
         ),
     )
+    directory = Directory(source=settings.directory_url, clock=clock)
+    pilot, why_off = build_pilot(settings, station, directory, clock)
+    background = []
+    if pilot is not None:
+        if settings.idle_disconnect_minutes:
+            log.warning("GhostNet autopilot keeps listening unattended: idle disconnect disabled")
+            station.config = replace(station.config, idle_disconnect_s=0.0)
+        background.append(pilot.run())
+        log.info(
+            "GhostNet autopilot on: region %s, home grid %s",
+            pilot.config.region,
+            pilot.config.home_grid,
+        )
+    else:
+        if settings.ghostnet:
+            log.error("GhostNet autopilot not started: %s", why_off)
+        station.join_messages.append(lambda: disabled_status(why_off))
     uvicorn.run(
-        create_app(station, settings, clock=clock),
+        create_app(station, settings, clock=clock, directory=directory, background=background),
         host=settings.listen_host,
         port=settings.listen_port,
         log_config=None,

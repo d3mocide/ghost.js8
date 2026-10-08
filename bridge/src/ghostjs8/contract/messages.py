@@ -169,13 +169,48 @@ class Error(_Msg):
     message: str
 
 
+class GhostNetWindow(_Model):
+    id: str
+    label: str
+    kind: Literal["net", "bridge"]
+    band: str
+    dial_hz: int
+    start: datetime
+    end: datetime
+
+
+class GhostNet(_Msg):
+    """GhostNet autopilot status (absent features report enabled = false)."""
+
+    type: Literal["ghostnet"] = "ghostnet"
+    enabled: bool
+    region: Literal["na", "eu", "aus"] | None
+    home_grid: str | None
+    mode: Literal["off", "window", "parked", "paused"]
+    window: GhostNetWindow | None  # the window being monitored (pre-roll included)
+    next_window: GhostNetWindow | None
+    recording_net_id: str | None
+    receiver_reason: str
+    paused_until: datetime | None
+    detail: str
+
+
 class Pong(_Msg):
     type: Literal["pong"] = "pong"
     utc: datetime
 
 
 ServerMessage = Annotated[
-    Hello | Health | Session | Decode | Station | History | ReceiverStatus | Error | Pong,
+    Hello
+    | Health
+    | Session
+    | Decode
+    | Station
+    | History
+    | ReceiverStatus
+    | GhostNet
+    | Error
+    | Pong,
     Field(discriminator="type"),
 ]
 server_message_adapter: TypeAdapter[ServerMessage] = TypeAdapter(ServerMessage)
@@ -202,6 +237,40 @@ class ReceiverListing(_Model):
     max_hz: int
     antenna: str
     snr_db: int | None
+
+
+class NetSummary(_Model):
+    """One recorded GhostNet window (GET /api/nets)."""
+
+    id: str
+    window_id: str
+    label: str
+    kind: Literal["net", "bridge"]
+    band: str
+    dial_hz: int
+    scheduled_start: datetime
+    scheduled_end: datetime
+    started: datetime
+    ended: datetime | None  # null while recording
+    receiver: str | None
+    receiver_reason: str
+    decode_count: int
+    station_count: int
+    has_audio: bool
+    has_waterfall: bool
+    flash_count: int  # @GSTFLASH messages copied
+    operator_override: bool  # a viewer retuned during the window
+
+
+class NetLog(_Model):
+    """A recorded net with its traffic (GET /api/nets/{id})."""
+
+    summary: NetSummary
+    decodes: list[Decode]
+    stations: list[Station]
+    waterfall_seconds: int  # rows in waterfall.png, one per second from `started`
+    waterfall_offset_lo_hz: int
+    waterfall_offset_hi_hz: int
 
 
 class ReceiverDirectory(_Model):

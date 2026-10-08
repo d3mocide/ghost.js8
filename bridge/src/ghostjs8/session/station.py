@@ -21,6 +21,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Protocol
 
+from pydantic import BaseModel
+
 from ghostjs8 import __version__
 from ghostjs8.api.hub import Client, Hub
 from ghostjs8.contract import binary
@@ -97,6 +99,17 @@ class ReceiverTarget:
     port: int
     password: str = ""
     name: str | None = None
+    tls: bool = False
+
+
+class StationObserver(Protocol):
+    """Taps the station's data path (e.g. the GhostNet net recorder). Must not block."""
+
+    def on_audio(self, block: AudioBlock) -> None: ...
+
+    def on_waterfall(self, row: WaterfallRow) -> None: ...
+
+    def on_decode(self, decode: Decode) -> None: ...
 
 
 ReceiverFactory = Callable[[ReceiverTarget, Tuning, ReceiverSink], ReceiverHandle]
@@ -152,6 +165,11 @@ class Station(ReceiverSink, DecoderSink):
         self._rssi: float | None = None
         self._receiver_info: dict[str, str] = {}
         self._last_wf_mono: float | None = None
+        self.observers: list[StationObserver] = []
+        # Called when a viewer changes tuning or receiver (the GhostNet autopilot yields).
+        self.operator_action: list[Callable[[], None]] = []
+        # Extra messages sent to each new viewer after the standard ones.
+        self.join_messages: list[Callable[[], BaseModel]] = []
 
     # ================================================================ run
 
@@ -297,6 +315,11 @@ class Station(ReceiverSink, DecoderSink):
                 log.warning("retune failed: %s", exc)
         self._broadcast_session()
 
+    def operator_changed(self) -> None:
+        """A viewer took manual control (tune / select / release)."""
+        for callback in self.operator_action:
+            callback()
+
     def client_joined(self, client: Client) -> None:
         self._no_clients_since = None
         if self._idle_paused:
@@ -323,6 +346,8 @@ class Station(ReceiverSink, DecoderSink):
         client.send_model(self.session_message())
         client.send_model(self.health.snapshot())
         client.send_model(self.receiver_status())
+        for make in self.join_messages:
+            client.send_model(make())
         self._broadcast_session()  # subscriber count changed
 
     def client_left(self) -> None:
@@ -388,6 +413,8 @@ class Station(ReceiverSink, DecoderSink):
             self._adc_overload_reported = overload
             self.hub.broadcast(self.receiver_status())
         self.decoder.submit_audio(block.pcm_s16le)
+        for obs in self.observers:
+            obs.on_audio(block)
         if self.hub.wants("audio"):
             self.hub.broadcast_binary(
                 "audio",
@@ -398,6 +425,8 @@ class Station(ReceiverSink, DecoderSink):
 
     def on_waterfall(self, row: WaterfallRow) -> None:
         self.health.waterfall()
+        for obs in self.observers:
+            obs.on_waterfall(row)
         if not self.hub.wants("waterfall"):
             return
         now = self.clock.monotonic()
@@ -437,6 +466,8 @@ class Station(ReceiverSink, DecoderSink):
         if self.store is not None:
             self.store.add_decode(msg)
         self.hub.broadcast(msg)
+        for obs in self.observers:
+            obs.on_decode(msg)
         # JS8Call reports directed traffic twice (activity + directed): count the
         # activity line; the directed copy only contributes a grid, if it has one.
         if event.from_call:
