@@ -1,0 +1,11 @@
+#!/bin/sh
+# Run supervisord; if ghost-fatal-listener stopped it because a critical program
+# went FATAL, exit non-zero so any Docker restart policy treats it as a failure.
+rm -f /run/ghost/fatal
+/usr/bin/supervisord -n -c /etc/ghostjs8/supervisord.conf
+rc=$?
+if [ -e /run/ghost/fatal ]; then
+  echo "ghost-supervise: critical process FATAL: $(cat /run/ghost/fatal)" >&2
+  exit 70
+fi
+exit "$rc"

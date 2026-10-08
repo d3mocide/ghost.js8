@@ -1,0 +1,59 @@
+#!/usr/bin/python3
+"""Container health: fail unless the decoder can really decode.
+
+Checks: every critical supervised program RUNNING; X answering; the PulseAudio
+graph present; JS8Call running AND holding an uncorked capture stream on
+ghost_rx_in. Exit 0 healthy, 1 unhealthy (reason on stdout).
+"""
+
+import json
+import subprocess
+import sys
+
+CRITICAL = ("xvfb", "pulseaudio", "js8call")
+
+
+def run(*cmd: str) -> str:
+    return subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=4).stdout
+
+
+def fail(reason: str) -> None:
+    print(reason)
+    sys.exit(1)
+
+
+def main() -> None:
+    try:
+        status = run("supervisorctl", "-c", "/etc/ghostjs8/supervisord.conf", "status", *CRITICAL)
+    except subprocess.CalledProcessError as exc:
+        fail(f"supervised program not running: {exc.stdout.strip()}")
+    for line in status.splitlines():
+        name, state = line.split()[:2]
+        if state != "RUNNING":
+            fail(f"{name} is {state}")
+    try:
+        run("xdpyinfo")
+    except subprocess.CalledProcessError:
+        fail("X server not answering")
+    try:
+        sources = json.loads(run("pactl", "-f", "json", "list", "short", "sources"))
+        outputs = json.loads(run("pactl", "-f", "json", "list", "source-outputs"))
+    except (subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+        fail(f"PulseAudio not answering: {exc}")
+    rx_in = [s["index"] for s in sources if s["name"] == "ghost_rx_in"]
+    if not rx_in:
+        fail("ghost_rx_in source missing")
+    capturing = [
+        o
+        for o in outputs
+        if o["source"] == rx_in[0]
+        and o["properties"].get("application.process.binary") == "JS8Call"
+        and not o["corked"]
+    ]
+    if not capturing:
+        fail("JS8Call is not capturing from ghost_rx_in")
+    print("ok")
+
+
+if __name__ == "__main__":
+    main()

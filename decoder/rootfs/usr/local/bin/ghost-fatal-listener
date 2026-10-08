@@ -1,0 +1,25 @@
+#!/usr/bin/python3
+"""supervisord event listener: exit the container when a program goes FATAL."""
+
+import os
+import signal
+import sys
+
+
+def main() -> None:
+    while True:
+        sys.stdout.write("READY\n")
+        sys.stdout.flush()
+        header = dict(tok.split(":", 1) for tok in sys.stdin.readline().split())
+        payload = sys.stdin.read(int(header["len"]))
+        sys.stderr.write(f"ghost-fatal-listener: {header.get('eventname')} {payload}; stopping container\n")
+        sys.stderr.flush()
+        with open("/run/ghost/fatal", "w") as marker:
+            marker.write(payload)
+        sys.stdout.write("RESULT 2\nOK")
+        sys.stdout.flush()
+        os.kill(int(open("/run/ghost/supervisord.pid").read().strip()), signal.SIGTERM)
+
+
+if __name__ == "__main__":
+    main()

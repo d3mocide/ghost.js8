@@ -1,0 +1,18 @@
+# PulseAudio graph for the decoder. Device names are stable IDs that JS8Call is
+# configured with (SoundInId / SoundOutId). Do not rename without updating
+# ghost-start-js8call.
+#
+#   decoder-agent ──pcm──▶ ghost_rx (null sink)
+#                              └─ ghost_rx.monitor ──▶ ghost_rx_in (remap source) ──▶ JS8Call input
+#   JS8Call output ─────▶ ghost_discard (null sink, never monitored)
+#
+# Qt hides monitor sources from its input list, hence module-remap-source.
+
+load-module module-native-protocol-unix auth-anonymous=1 socket=/run/ghost/pulse/native
+
+load-module module-null-sink sink_name=ghost_rx rate=48000 channels=1 channel_map=mono sink_properties=device.description=ghost_rx
+load-module module-remap-source source_name=ghost_rx_in master=ghost_rx.monitor channels=1 channel_map=mono source_properties=device.description=ghost_rx_in
+load-module module-null-sink sink_name=ghost_discard rate=48000 channels=1 channel_map=mono sink_properties=device.description=ghost_discard
+
+set-default-sink ghost_discard
+set-default-source ghost_rx_in
