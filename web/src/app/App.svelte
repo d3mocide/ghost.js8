@@ -3,6 +3,7 @@
   import { GhostApp } from '../lib/state/app.svelte';
   import { provideApp } from '../lib/state/context';
   import TopBar from '../features/status/TopBar.svelte';
+  import Backdrop from '../components/Backdrop.svelte';
   import SituationBar from '../features/status/SituationBar.svelte';
   import StatusPanel from '../features/status/StatusPanel.svelte';
   import ReceiverPanel from '../features/receiver/ReceiverPanel.svelte';
@@ -74,6 +75,7 @@
   onDestroy(release);
 </script>
 
+<Backdrop />
 <TopBar />
 
 <div class="shell">

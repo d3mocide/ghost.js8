@@ -30,6 +30,7 @@ KiwiSDR ─ SND ─→ bridge ─→ decoder-agent ─→ PulseAudio null sink �
 | `web/src/lib/protocol/generated.ts` | Generated from the JSON Schema. **Never edit by hand.** |
 | `web/src/lib/` | Framework-free, unit-tested: `protocol/` (client, binary), `audio/` (ring, worklet, player), `waterfall/`, `state/` (reducer, situation, Svelte app store), `grid.ts`, `bands.ts` |
 | `web/src/features/` | Svelte panels: receiver, tuning, audio, waterfall, timeline, stations, map, status |
+| `web/src/lib/backdrop/` | ASCII backdrop engine (`ascii.ts`, pure helpers unit-tested) + per-viewer mode preference |
 | `web/src/styles/tokens.css` | Design tokens: the single source for colour, glass, radii, spacing, type, motion |
 | `web/deploy/` | nginx template for the `web` image |
 | `tools/dev-stack.sh` | fake KiwiSDR + fake decoder-agent + real bridge, no Docker (`GHOSTNET=1 SEED_NET=1` for the autopilot + a seeded recording) |
@@ -140,6 +141,10 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
 - axe flags scrollable lists with no focusable children
   (`scrollable-region-focusable`). It only shows up once a list overflows, as
   in the full e2e run, so give such lists `tabindex="0"` and a label.
+- The ASCII backdrop canvas sits at `z-index: -1`, so the page base gradient
+  lives on `<html>` and `<body>` must stay transparent, or the canvas is hidden.
+  Keep the glass blur high enough (~20 px) that backdrop labels don't compete
+  with panel text.
 - TypeScript is pinned to 6.0.x because typescript-eslint does not yet support 7.
 
 ## Conventions

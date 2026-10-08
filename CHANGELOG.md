@@ -23,9 +23,13 @@ First MVP.
   on the nearest suitable public KiwiSDR, parks on 7.107 MHz between windows,
   and records traffic, a waterfall image and FLAC audio per window. It steps
   aside when a viewer takes control.
-- "Ghost aurora" visual design: frosted-glass panels over a slow aurora
-  backdrop, aqua→violet accent, a sticky top bar and a hero strip (frequency,
-  situation, decodes/stations/last decode). The waterfall colormap was retuned
-  to match. Honours reduced motion and reduced transparency.
+- "Ghost signal" visual design: frosted-glass panels over a deep solid
+  gradient and a live ASCII backdrop. It shows drifting static and radio-wave
+  rings carrying the callsign of each new decode. It also pulses on every 15 s
+  JS8 slot, and an occasional ghost drifts past. A top-bar toggle switches to a
+  still gradient; reduced motion draws one frame.
+  The redesign also adds a sticky top bar and a hero strip showing the
+  frequency, the situation and decodes/stations/last decode. The waterfall
+  colormap was retuned to match.
 - Net log viewer (`#/net/<id>`) with click-to-seek audio, and a live
   @GSTFLASH alert banner. Timeline tags for FLASH/GN/DIR traffic.

@@ -101,4 +101,19 @@ test.describe('ghost.js8 smoke', () => {
       serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
     ).toEqual([]);
   });
+
+  test('backdrop is decorative and can be switched to a still gradient', async ({ page }) => {
+    await page.goto('/');
+    const fx = page.getByRole('button', { name: 'Animated backdrop' });
+    await expect(fx).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('backdrop')).toHaveAttribute('aria-hidden', 'true');
+    await fx.click();
+    await expect(fx).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId('backdrop')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Animated backdrop' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
 });

@@ -2,6 +2,7 @@
   import Logo from '../../components/Logo.svelte';
   import { useApp } from '../../lib/state/context';
   import { utcTime } from '../../lib/format';
+  import { backdrop } from '../../lib/backdrop/mode.svelte';
 
   const app = useApp();
   const link = $derived(app.state.link);
@@ -21,6 +22,22 @@
     <a class="brand" href="#/" aria-label="ghost.js8 home"><Logo size={30} /></a>
     <span class="tagline">JS8 listening post</span>
     <span class="spacer"></span>
+    <button
+      type="button"
+      class="fx"
+      aria-pressed={backdrop.mode === 'signal'}
+      title={backdrop.mode === 'signal'
+        ? 'Animated ASCII backdrop on: click for a still background'
+        : 'Still background: click for the animated ASCII backdrop'}
+      onclick={() => {
+        backdrop.toggle();
+      }}
+    >
+      <span class="glyph mono" aria-hidden="true"
+        >{backdrop.mode === 'signal' ? '((·))' : '( · )'}</span
+      >
+      <span class="sr-only">Animated backdrop</span>
+    </button>
     <span class="rx-only" title="ghost.js8 cannot transmit">
       <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"
         ><path
@@ -75,6 +92,28 @@
   }
   .spacer {
     flex: 1;
+  }
+  .fx {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--g-border);
+    border-radius: var(--g-radius-pill);
+    background: var(--g-glass-raised);
+    color: var(--g-text-muted);
+    font-size: var(--g-text-xs);
+    cursor: pointer;
+    transition:
+      color var(--g-dur-fast) var(--g-ease),
+      border-color var(--g-dur-fast) var(--g-ease);
+  }
+  .fx[aria-pressed='true'] {
+    color: var(--g-signal);
+    border-color: rgb(94 234 212 / 0.35);
+  }
+  .fx:hover {
+    border-color: var(--g-border-strong);
   }
   .rx-only {
     display: inline-flex;

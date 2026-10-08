@@ -1,31 +1,27 @@
 /*
  * ghost.js8 design tokens — the single source for colour, glass, radii, blur,
- * spacing, type and motion. Palette "ghost aurora": deep ink base, a slow
- * aurora behind frosted glass, aqua→violet accent, mint for live signal.
+ * spacing, type and motion. Palette "ghost signal": a deep solid gradient with
+ * a live ASCII field behind frosted glass, aqua→violet accent, mint for live signal.
  * Contrast: --g-text and --g-text-muted are >= 7:1 and >= 4.5:1 against the
  * most opaque glass surface over --g-bg-0 (checked against #141826).
  */
 :root {
   color-scheme: dark;
 
-  /* base */
-  --g-bg-0: #05060c;
-  --g-bg-1: #090b16;
-  --g-bg-2: #10132a;
-
-  /* aurora (backdrop only) */
-  --g-aurora-1: rgb(34 211 238 / 0.55); /* aqua */
-  --g-aurora-2: rgb(99 102 241 / 0.75); /* indigo */
-  --g-aurora-3: rgb(192 132 252 / 0.6); /* violet */
-  --g-aurora-4: rgb(45 212 191 / 0.4); /* mint */
+  /* base: solid gradient, ink → midnight indigo → plum */
+  --g-bg-0: #04050b;
+  --g-bg-1: #0a0c1f;
+  --g-bg-2: #1a1033;
+  --g-bg-glow-a: rgb(56 189 248 / 0.1); /* top-right, cool */
+  --g-bg-glow-b: rgb(139 92 246 / 0.14); /* bottom-left, warm violet */
 
   /* glass */
-  --g-glass: rgb(16 19 38 / 0.38);
+  --g-glass: rgb(12 14 30 / 0.6);
   --g-glass-strong: rgb(18 22 40 / 0.86);
   --g-glass-raised: rgb(255 255 255 / 0.06); /* controls, rows on hover */
   --g-glass-sunken: rgb(3 4 10 / 0.45); /* inputs, canvases */
   --g-glass-solid: #141826; /* fallback when blur is unavailable or unwanted */
-  --g-glass-blur: 26px;
+  --g-glass-blur: 20px;
   --g-glass-saturate: 170%;
   --g-border: rgb(255 255 255 / 0.08);
   --g-border-strong: rgb(255 255 255 / 0.16);
