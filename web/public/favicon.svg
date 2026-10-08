@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>ghost.js8</title>
+  <rect width="64" height="64" rx="14" fill="#05060a"/>
+  <path d="M14 50V29a18 18 0 0 1 36 0v21l-4.5-4-4.5 4-4.5-6-4.5 6-4.5-6-4.5 6z" fill="none" stroke="#5ce1ff" stroke-width="3.2" stroke-linejoin="round"/>
+  <rect x="22" y="27" width="8" height="4" rx="1" fill="#3dff9a"/>
+  <rect x="34" y="27" width="8" height="4" rx="1" fill="#3dff9a"/>
+</svg>

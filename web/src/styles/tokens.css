@@ -1,19 +1,88 @@
-/* Design tokens: single source for colors, radii, blur and spacing.
-   Palette "ghost phosphor" (decision D11). Fleshed out in milestone 7. */
+/*
+ * ghost.js8 design tokens — the single source for colour, glass, radii, blur,
+ * spacing, type and motion. Palette "ghost phosphor" (decision D11).
+ * Contrast: --g-text and --g-text-muted are >= 7:1 and >= 4.5:1 against the
+ * most opaque glass surface over --g-bg-0 (checked against #0e1424).
+ */
 :root {
+  color-scheme: dark;
+
+  /* base */
   --g-bg-0: #05060a;
   --g-bg-1: #0b0f1a;
+  --g-bg-2: #111727;
+
+  /* glass */
+  --g-glass: rgb(14 20 36 / 0.58);
+  --g-glass-strong: rgb(14 20 36 / 0.82);
+  --g-glass-solid: #0e1424; /* fallback when blur is unavailable or unwanted */
+  --g-glass-blur: 14px;
+  --g-glass-saturate: 140%;
+  --g-border: rgb(92 225 255 / 0.16);
+  --g-border-strong: rgb(92 225 255 / 0.38);
+  --g-inner-glow: inset 0 1px 0 rgb(255 255 255 / 0.05), inset 0 0 24px rgb(92 225 255 / 0.03);
+
+  /* text */
   --g-text: #d7e3f4;
-  --g-text-muted: #8fa3bf;
-  --g-signal: #3dff9a;
-  --g-chrome: #5ce1ff;
-  --g-warn: #ffb84d;
-  --g-alert: #ff4d5e;
+  --g-text-muted: #94a7c2;
+  --g-text-dim: #6b7d98; /* decorative only, never sole carrier of meaning */
+
+  /* semantic accents: each also has an icon/label, colour is never alone */
+  --g-signal: #3dff9a; /* live signal, ok */
+  --g-signal-soft: rgb(61 255 154 / 0.14);
+  --g-chrome: #5ce1ff; /* UI chrome, focus */
+  --g-chrome-soft: rgb(92 225 255 / 0.12);
+  --g-warn: #ffb84d; /* degraded, stale */
+  --g-warn-soft: rgb(255 184 77 / 0.14);
+  --g-alert: #ff4d5e; /* overload, fault */
+  --g-alert-soft: rgb(255 77 94 / 0.16);
+
+  /* type */
+  --g-font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --g-font-ui: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --g-text-xs: 0.6875rem;
+  --g-text-s: 0.8125rem;
+  --g-text-m: 0.9375rem;
+  --g-text-l: 1.125rem;
+  --g-text-xl: 1.5rem;
+  --g-tracking-caps: 0.14em;
+
+  /* space (4 px grid) */
+  --g-space-1: 0.25rem;
+  --g-space-2: 0.5rem;
+  --g-space-3: 0.75rem;
+  --g-space-4: 1rem;
+  --g-space-5: 1.5rem;
+  --g-space-6: 2rem;
+
+  /* radii */
+  --g-radius-s: 6px;
+  --g-radius-m: 10px;
+  --g-radius-l: 16px;
+
+  /* motion */
+  --g-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --g-dur-fast: 120ms;
+  --g-dur: 240ms;
+  --g-dur-slow: 900ms;
+
+  /* layout */
+  --g-banner-h: 28px;
+  --g-gutter: var(--g-space-4);
 }
 
-html,
-body {
-  margin: 0;
-  background: var(--g-bg-0);
-  color: var(--g-text);
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --g-glass: var(--g-glass-solid);
+    --g-glass-strong: var(--g-glass-solid);
+    --g-glass-blur: 0px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --g-dur-fast: 0ms;
+    --g-dur: 0ms;
+    --g-dur-slow: 0ms;
+  }
 }
