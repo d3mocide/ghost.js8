@@ -1,0 +1,19 @@
+/* Design tokens: single source for colors, radii, blur and spacing.
+   Palette "ghost phosphor" (decision D11). Fleshed out in milestone 7. */
+:root {
+  --g-bg-0: #05060a;
+  --g-bg-1: #0b0f1a;
+  --g-text: #d7e3f4;
+  --g-text-muted: #8fa3bf;
+  --g-signal: #3dff9a;
+  --g-chrome: #5ce1ff;
+  --g-warn: #ffb84d;
+  --g-alert: #ff4d5e;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--g-bg-0);
+  color: var(--g-text);
+}
