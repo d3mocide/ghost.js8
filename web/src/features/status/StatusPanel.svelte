@@ -55,7 +55,7 @@
       {/each}
       <li>
         <span class="name">Last decode</span>
-        <span class="mono" data-testid="last-decode">
+        <span class="mono last" data-testid="last-decode">
           {h.last_decode_utc
             ? `${utcTime(h.last_decode_utc)}Z (${ago(h.last_decode_utc, app.now)} ago)`
             : 'none yet'}
@@ -75,7 +75,7 @@
   }
   li {
     display: grid;
-    grid-template-columns: minmax(8rem, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
     gap: var(--g-space-2);
     padding: 4px 0;
@@ -85,13 +85,18 @@
     border-top: 1px solid var(--g-hairline);
     padding-top: 8px;
   }
+  .last {
+    grid-column: 2 / -1;
+    text-align: right;
+  }
   .name {
     color: var(--g-text-muted);
   }
   .evidence {
     color: var(--g-text-muted);
     font-size: var(--g-text-xs);
-    min-width: 5.5rem;
+    min-width: 0;
+    white-space: nowrap;
     text-align: right;
   }
   .detail {
