@@ -273,7 +273,12 @@ class FakeKiwi:
             seq = 0
             period = 1.0 / self.config.wf_rows_per_s
             while sid in self._snd_sessions:
-                await ws.send(_synthetic_wf_row(seq, zoom=_last_zoom(slog), x_bin=0))
+                zoom, x_bin = _view(slog, self.config.bandwidth_hz)
+                await ws.send(
+                    _synthetic_wf_row(
+                        seq, zoom=zoom, x_bin=x_bin, bandwidth_hz=self.config.bandwidth_hz
+                    )
+                )
                 seq += 1
                 await asyncio.sleep(period)
             await ws.close()
@@ -283,20 +288,37 @@ class FakeKiwi:
                 await reader
 
 
-def _last_zoom(slog: _SessionLog) -> int:
+def _view(slog: _SessionLog, bandwidth_hz: int) -> tuple[int, int]:
+    """(zoom, x_bin) for the last ``SET zoom=Z cf=kHz`` the client sent, like a real Kiwi."""
     for cmd in reversed(slog.commands):
         if cmd.startswith("SET zoom="):
-            return int(cmd.split()[1].split("=")[1])
-    return 0
+            fields = dict(part.split("=", 1) for part in cmd.split()[1:] if "=" in part)
+            zoom = int(fields.get("zoom", "0"))
+            if "cf" not in fields:
+                return zoom, int(float(fields.get("start", "0")))
+            span = bandwidth_hz / (1 << zoom)
+            start_hz = max(0.0, float(fields["cf"]) * 1000 - span / 2)
+            return zoom, round(start_hz / bandwidth_hz * (WF_BINS << 14))
+    return 0, 0
 
 
-def _synthetic_wf_row(seq: int, *, zoom: int, x_bin: int) -> bytes:
-    """Noise floor plus a slowly drifting carrier: enough to test transport/rendering."""
+def _synthetic_wf_row(seq: int, *, zoom: int, x_bin: int, bandwidth_hz: int = 30_000_000) -> bytes:
+    """Noise floor, a drifting carrier and a few JS8-like tones near the passband
+    centre (offsets 702/1210/1866 Hz from a dial 1550 Hz below centre). Synthetic:
+    tests transport and rendering only."""
     floor = 255 - 110
-    carrier = (seq * 3) % WF_BINS
+    bin_hz = bandwidth_hz / (1 << zoom) / WF_BINS
     row = bytearray(floor + ((i * 7 + seq * 13) % 9) for i in range(WF_BINS))
+    carrier = (seq * 3) % WF_BINS
     for d in range(-2, 3):
         row[(carrier + d) % WF_BINS] = 255 - 40 - abs(d) * 6
+    for k, offset in enumerate((702, 1210, 1866)):
+        if (seq // 40 + k) % 3 == 0:
+            continue  # tones come and go like 15 s JS8 transmissions
+        centre = WF_BINS // 2 + round((offset - 1550) / bin_hz)
+        for b in range(centre - max(1, round(25 / bin_hz)), centre + max(2, round(25 / bin_hz))):
+            if 0 <= b < WF_BINS:
+                row[b] = 255 - 55 - (seq + b) % 6
     return b"W/F" + b"\x00" + struct.pack("<III", x_bin, zoom & 0xFFFF, seq) + bytes(row)
 
 

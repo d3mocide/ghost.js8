@@ -7,7 +7,8 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "lib": ["ES2023", "DOM"]
   },
   "include": ["vite.config.ts", "playwright.config.ts"]
 }
