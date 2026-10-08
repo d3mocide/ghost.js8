@@ -89,7 +89,21 @@ receiver connected · audio fresh · waterfall fresh · last decode timestamp.
 | — | Web server | nginx-unprivileged (lighter than Caddy; TLS is the outer proxy's job) |
 | — | Defaults | Python 3.12, Node 22 LTS, supervisord + fatal-exit listener, passband 100–3000 Hz USB, Kiwi ident `ghost.js8`, reconnect backoff 5 s–5 min jittered |
 
-## Milestones
+## Implementation notes and deviations from the plan
+
+| Topic | Planned | Shipped in 0.1.0 | Why / next |
+|---|---|---|---|
+| D2 map tiles | MapLibre + self-hosted Protomaps PMTiles | MapLibre + bundled Natural Earth 1:110m land/border GeoJSON (~160 KB) and a Maidenhead field grid | No tile server or extraction toolchain needed, zero third-party requests, fits the minimal look. PMTiles remains the upgrade path if detail is needed. |
+| D5 decoder slots | one bridge leasing a pool of N decoder slots | one bridge drives one station (one receiver + one decoder) | Covers the MVP. Run several compose projects for several receivers. The in-bridge slot pool is a follow-up; the `Station`/`DecoderHandle` seams are where it goes. |
+| D6 shared session | shared, any client retunes, optional hold lock | shared, any client retunes, changes broadcast to all viewers | The hold lock is a follow-up. |
+| Station source | `RX.SPOT` | `RX.CALL_ACTIVITY` (agent polls `RX.GET_CALL_ACTIVITY`) | JS8Call emits `RX.SPOT` only when spotting to PSKReporter is on, which we keep off. |
+| Directed text | — | `FROM: text`, EOM `♢` stripped | `RX.DIRECTED` omits the sender; activity and directed records of one transmission are collapsed in the UI. |
+| UI dev/test | — | `ghostjs8.sim.fake_agent` + `tools/dev-stack.sh` | Browser tests and UI work without Docker. Scripted traffic, never a decoding claim. |
+
+## Milestones (status)
+
+All nine milestones are complete for 0.1.0. The original plan follows.
+
 
 1. Repo skeleton, tooling, CLAUDE.md/AGENTS.md, CI scaffolding
 2. Decoder image: pinned + checksum-verified JS8Call on Ubuntu 24.04, Xvfb, supervised

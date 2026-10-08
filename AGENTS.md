@@ -28,6 +28,11 @@ KiwiSDR ─ SND ─→ bridge ─→ decoder-agent ─→ PulseAudio null sink �
 | `contract/` | Generated JSON Schema (committed) |
 | `web/` | Vite + Svelte 5 + TypeScript UI. `web/src/lib/` is framework-free (protocol, DSP, waterfall, audio). |
 | `web/src/lib/protocol/generated.ts` | Generated from the JSON Schema. **Never edit by hand.** |
+| `web/src/lib/` | Framework-free, unit-tested: `protocol/` (client, binary), `audio/` (ring, worklet, player), `waterfall/`, `state/` (reducer, situation, Svelte app store), `grid.ts`, `bands.ts` |
+| `web/src/features/` | Svelte panels: receiver, tuning, audio, waterfall, timeline, stations, map, status |
+| `web/src/styles/tokens.css` | Design tokens: the single source for colour, glass, radii, spacing, type, motion |
+| `web/deploy/` | nginx template for the `web` image |
+| `tools/dev-stack.sh` | fake KiwiSDR + fake decoder-agent + real bridge, no Docker |
 | `decoder/` | Decoder container: Dockerfile, supervisor config, PulseAudio config, JS8Call ini template |
 | `tools/fake-kiwi/` | Simulated KiwiSDR server using real SND/W/F framing |
 | `tools/fixtures/` | Fetch + verify script for the GPL-3.0 upstream test recording (never vendored) |
@@ -49,6 +54,9 @@ Run from the repo root.
 | `make decoder-image` | build `ghostjs8-decoder:dev` (set `EXTRA_CA=/path/bundle.crt` behind a TLS proxy) |
 | `make fixtures` | fetch + SHA-256-verify the upstream test recording into `tools/fixtures/cache/` |
 | `make acceptance` | real-recording end-to-end test in Docker (`docker-compose.test.yml`, isolated network) |
+| `make e2e` | Playwright (desktop + phone) against the simulated stack; set `PW_CHROMIUM_PATH` to use a preinstalled Chromium |
+| `make images` / `make up` / `make down` | production compose build / start / stop |
+| `tools/dev-stack.sh` + `npm --prefix web run dev` | UI development against the simulated stack |
 
 Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
 [`docs/SECURITY-UPDATES.md`](docs/SECURITY-UPDATES.md) once written).
@@ -105,6 +113,14 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
   (reply `RX.CALL_ACTIVITY`: callsign -> SNR/GRID/UTC).
 - The decoder-agent may only send `ALLOWED_REQUESTS` to JS8Call (read-only);
   a test asserts `TX.*` requests raise.
+- nginx's `mime.types` may lack `.mjs`; the web template serves it as
+  `text/javascript`. With `nosniff`, MapLibre's module worker fails otherwise.
+- MapLibre 6 loads its worker relative to its module URL: Vite must not
+  pre-bundle it (`optimizeDeps.exclude`) and the app calls `setWorkerUrl()`
+  with the `?url` import so production builds emit the worker.
+- Compose's bake builder refuses build secrets outside the project; the
+  Makefile builds with `COMPOSE_BAKE=false` and the default `extra_ca` secret is
+  an empty in-repo file.
 - `uv add/remove` re-syncs without extras; run `uv sync --all-extras` after.
 - Building behind a TLS-intercepting proxy: pass the full CA bundle as build
   secret `extra_ca`; never disable verification.
