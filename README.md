@@ -1,81 +1,72 @@
-# ghost.js8
+<p align="center">
+  <img src="docs/assets/banner.webp" alt="ghost.js8 — receive only, JS8 listening post" width="100%">
+</p>
 
-**Receive-only JS8Call decoding through web-based KiwiSDR receivers.**
+<p align="center">
+  <b>Passive JS8 listening through public KiwiSDR receivers.</b><br>
+  The native JS8Call decoder, headless in Docker, behind a browser listening post. It never transmits.
+</p>
 
-Passive, quiet, persistent listening on HF digital traffic, in the spirit of
-S2 Underground's GhostNet. A d3FRAG Networks project.
+<p align="center">
+  <a href="https://github.com/d3mocide/ghost.js8/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/d3mocide/ghost.js8/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Receive only" src="https://img.shields.io/badge/mode-receive_only-5eead4?labelColor=0a0c1f">
+  <img alt="License GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-a78bfa?labelColor=0a0c1f">
+</p>
 
-ghost.js8 connects to a public (or your own) KiwiSDR, feeds its audio to the
-**native JS8Call decoder** running headless in Docker, and shows the decoded
-traffic, a live waterfall, heard stations and a map in a browser. It never
-transmits.
+<p align="center">
+  <img src="docs/assets/dashboard.webp" alt="ghost.js8 dashboard: frequency, live waterfall, decoded traffic, GhostNet autopilot, heard stations" width="100%">
+</p>
+
+## What it does
+
+- **Real decoding.** KiwiSDR audio goes into native JS8Call. CI proves it end to end with a real recording.
+- **Live listening post.** Waterfall, decoded traffic, heard stations, map and an audio monitor work on desktop and phone.
+- **GhostNet autopilot (opt-in).** It follows your region's GhostNet JS8 nets on the nearest KiwiSDR. Each net is recorded (traffic, waterfall, audio) for later review. Live `@GSTFLASH` traffic raises an alert.
+- **Truthful health.** Every component reports timestamped evidence. "Connected" is never mistaken for "decoding".
+- **Polite and passive.** It identifies itself, backs off on reconnect and never touches shared receiver settings. Nothing can transmit.
 
 ```
 KiwiSDR ─ SND ─▶ bridge ─▶ decoder-agent ─▶ PulseAudio ─▶ JS8Call (native, headless)
         └ W/F ─▶ bridge ─▶ browser              JS8Call ─ UDP ─▶ agent ─▶ bridge ─▶ browser
 ```
 
-## Status
-
-MVP complete:
-
-- **Decoding is proven with a real recording.** `make acceptance` replays
-  upstream's `A_1_4.wav` through real KiwiSDR framing into native JS8Call and
-  asserts `K0OG: KN4CRD SNR +02` arrives on the browser WebSocket. It runs in CI.
-- **Health is truthful.** Each component reports evidence with timestamps, and
-  a dead decoder can't look healthy.
-- **The UI** has receiver directory and manual entry, JS8 band presets,
-  waterfall, audio monitor, traffic timeline, heard stations, a map and status.
-  It works on desktop, tablet and phone.
-- **GhostNet autopilot (optional).** It follows your region's GhostNet JS8 nets
-  and data bridges on the nearest public KiwiSDR and records each window
-  (traffic, waterfall, audio) for later review. It also raises an alert on
-  live @GSTFLASH traffic. See [`docs/ghostnet.md`](docs/ghostnet.md).
-
 ## Quick start
 
 ```sh
 git clone https://github.com/d3mocide/ghost.js8 && cd ghost.js8
-cp .env.example .env          # set GHOSTJS8_ALLOWED_ORIGINS; optionally a boot receiver
-docker compose up -d --build  # web on 127.0.0.1:8080
+cp .env.example .env          # set GHOSTJS8_ALLOWED_ORIGINS
+docker compose up -d --build  # UI on http://127.0.0.1:8080
 ```
 
-Put your reverse proxy (Caddy / Nginx Proxy Manager) in front for TLS and
-authentication: see [`docs/operations.md`](docs/operations.md). The host clock
-must be NTP-synced; JS8 decoding depends on it.
+To monitor GhostNet unattended, add three lines to `.env` ([details](docs/ghostnet.md)):
 
-## Documentation
+```sh
+GHOSTJS8_GHOSTNET=on
+GHOSTJS8_GHOSTNET_REGION=na    # na | eu | aus
+GHOSTJS8_HOME_GRID=EM73        # your Maidenhead grid
+```
 
-| | |
-|---|---|
-| [`docs/architecture.md`](docs/architecture.md) | components, topology, decisions |
-| [`docs/protocol.md`](docs/protocol.md) | bridge ↔ browser protocol, binary layouts |
-| [`docs/kiwisdr-notes.md`](docs/kiwisdr-notes.md) | KiwiSDR framing, pairing, byte order, etiquette |
-| [`docs/decoder-container.md`](docs/decoder-container.md) | JS8Call headless, PulseAudio routing, UDP API |
-| [`docs/ghostnet.md`](docs/ghostnet.md) | GhostNet autopilot: schedule, receiver choice, recordings |
-| [`docs/operations.md`](docs/operations.md) | deploy, health, troubleshooting, manual checklist |
-| [`docs/SECURITY-UPDATES.md`](docs/SECURITY-UPDATES.md) | pinning and update process |
-| [`AGENTS.md`](AGENTS.md) | contributor/agent handoff: commands, invariants, gotchas |
+Put a reverse proxy in front for TLS and authentication ([operations](docs/operations.md)). Keep the host NTP-synced, because JS8 decoding depends on accurate time.
 
-## Development
+## Docs
 
-Requires `uv`, Node 22, GNU make, Docker.
+[Architecture](docs/architecture.md) · [GhostNet](docs/ghostnet.md) · [Operations](docs/operations.md) · [Protocol](docs/protocol.md) · [KiwiSDR notes](docs/kiwisdr-notes.md) · [Decoder container](docs/decoder-container.md) · [Security updates](docs/SECURITY-UPDATES.md) · [Contributing / agents](AGENTS.md)
+
+## Develop
+
+Requires `uv`, Node 22, GNU make and Docker.
 
 ```sh
 make setup        # pinned deps
-make check        # ruff, mypy --strict, pytest, eslint, prettier, svelte-check, vitest
-make contract     # regenerate JSON Schema + TS from the Pydantic contract
-make acceptance   # real-recording end-to-end test (Docker)
-make e2e          # Playwright against a simulated stack (no Docker)
+make check        # lint, typecheck, unit tests (bridge + web)
+make acceptance   # real-recording decode test (Docker)
+make e2e          # Playwright against a simulated stack
 ```
 
-UI work without Docker: `tools/dev-stack.sh` (fake KiwiSDR + fake decoder + real
-bridge) in one terminal, `cd web && npm run dev` in another.
+For UI work without Docker, run `tools/dev-stack.sh` and `npm --prefix web run dev`. Add `GHOSTNET=1 SEED_NET=1` to the dev stack for a demo GhostNet recording.
 
 ## License
 
-GPL-3.0-or-later. See [`LICENSE`](LICENSE).
+GPL-3.0-or-later. JS8Call (GPL-3.0) runs as a separate, unmodified process. The upstream test recording is fetched at test time, not redistributed. Map outlines are Natural Earth (public domain).
 
-- JS8Call (GPL-3.0) runs as a separate, unmodified process.
-- The upstream test recording is fetched at test time and not redistributed.
-- Map outlines are Natural Earth (public domain).
+<sub>A d3FRAG Networks project. In the spirit of S2 Underground's GhostNet; not affiliated.</sub>

@@ -305,7 +305,7 @@ export class AsciiBackdrop {
       const a = Math.min(1, age * 3) * (1 - age / LABEL_LIFE_S);
       const text = `· ${r.label} ·`;
       const w = ctx.measureText(text).width;
-      ctx.fillStyle = rgba(MINT, 0.75 * a);
+      ctx.fillStyle = rgba(MINT, 0.55 * a);
       ctx.fillText(text, r.col * CELL_W - w / 2, r.row * CELL_H);
     }
   }
