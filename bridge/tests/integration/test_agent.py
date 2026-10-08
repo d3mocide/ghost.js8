@@ -143,7 +143,7 @@ async def test_pcm_sink_is_bounded_and_drops_oldest() -> None:
     assert [sink.queue.get_nowait() for _ in range(3)] == [b"\x02", b"\x03", b"\x04"]
 
 
-async def test_pcm_sink_writes_through_process(tmp_path: object) -> None:
+async def test_pcm_sink_writes_through_process() -> None:
     sink = PcmSink(
         ManualClock(), command=(sys.executable, "-c", "import sys; sys.stdin.buffer.read()")
     )
@@ -153,6 +153,8 @@ async def test_pcm_sink_writes_through_process(tmp_path: object) -> None:
         while sink.last_write is None:
             await asyncio.sleep(0.02)
     task.cancel()
+    # Let run() kill and reap the child inside this loop (no transport GC after close).
+    await asyncio.gather(task, return_exceptions=True)
 
 
 # --------------------------------------------------- agent <-> bridge adapter
