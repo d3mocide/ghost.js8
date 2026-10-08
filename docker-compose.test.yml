@@ -54,4 +54,4 @@ networks:
 
 secrets:
   extra_ca:
-    file: ${EXTRA_CA:-/dev/null}
+    file: ${EXTRA_CA:-./tools/acceptance/no-extra-ca.pem}  # empty unless building behind a TLS proxy

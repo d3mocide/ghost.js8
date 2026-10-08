@@ -37,7 +37,7 @@ contract-check: contract
 fixtures:
 	python3 tools/fixtures/fetch_fixture.py
 
-COMPOSE_TEST := EXTRA_CA=$(EXTRA_CA) docker compose -f docker-compose.test.yml
+COMPOSE_TEST := COMPOSE_BAKE=false EXTRA_CA=$(EXTRA_CA) docker compose -f docker-compose.test.yml
 
 acceptance: fixtures
 	$(COMPOSE_TEST) build
