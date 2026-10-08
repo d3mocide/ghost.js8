@@ -1,0 +1,58 @@
+; Rendered by ghost-start-js8call on every start from environment variables.
+; JS8Call rewrites this file on exit; we discard that and re-render, so the
+; decoder is stateless and deterministic. Keys verified against JS8Call 3.0.3
+; source (JS8_UI/Configuration.cpp, JS8_UI/WideGraph.cpp, JS8_UI/mainwindow.cpp).
+
+[MultiSettings]
+CurrentName=Default
+
+[Configuration]
+; Receive-only placeholder identity. JS8Call opens a blocking settings dialog
+; when either is empty. Never transmitted: TX, heartbeat, relay and autoreply off.
+MyCall=${GHOSTJS8_JS8_CALL}
+MyGrid=${GHOSTJS8_JS8_GRID}
+
+; Audio: stable PulseAudio device IDs (QAudioDevice::id() == Pulse name).
+SoundInId=ghost_rx_in
+SoundInName=ghost_rx_in
+AudioInputChannel=Mono
+SoundOutId=ghost_discard
+SoundOutName=ghost_discard
+AudioOutputChannel=Mono
+NotificationSoundOutId=ghost_discard
+NotificationSoundOutName=ghost_discard
+AllowMonitorInputs=false
+EnableNotifications=false
+
+; Start monitoring (receiving) immediately.
+MonitorOFF=false
+MonitorLastUsed=false
+
+; Never transmit, never spot, never phone home.
+TransmitOFF=true
+RelayOFF=true
+AutoreplyOnAtStartup=false
+TxBeacon=0
+PSKReporter=false
+SpotToAPRS=false
+APRSISRelay=false
+CheckForUpdates=false
+WriteLogs=false
+Rig=None
+
+; JS8 UDP API -> decoder-agent on localhost.
+UDPEnabled=true
+UDPServer=127.0.0.1
+UDPServerPort=${GHOSTJS8_UDP_PORT}
+AcceptUDPRequests=true
+TCPEnabled=false
+WSJTXProtocolEnabled=false
+
+[Common]
+SubModeMultiDecode=true
+
+[WideGraph]
+; Decode range = filter range (mainwindow.cpp: nfa/nfb). Cover the receiver passband.
+FilterEnabled=true
+FilterCenter=${GHOSTJS8_FILTER_CENTER}
+FilterWidth=${GHOSTJS8_FILTER_WIDTH}

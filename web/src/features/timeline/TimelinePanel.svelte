@@ -1,0 +1,174 @@
+<script lang="ts">
+  import Panel from '../../components/Panel.svelte';
+  import { useApp } from '../../lib/state/context';
+  import { formatSnr, utcTime } from '../../lib/format';
+  import { classify } from '../../lib/ghostnet';
+
+  const app = useApp();
+  let directedOnly = $state(false);
+  const rows = $derived(
+    [...app.state.decodes].reverse().filter((d) => !directedOnly || d.kind === 'directed'),
+  );
+
+  // Throttled screen-reader announcements: at most one every 10 s.
+  let announcement = $state('');
+  let lastAnnounced = 0;
+  let pending = 0;
+  let seen = 0;
+  $effect(() => {
+    const total = app.state.decodes.length;
+    const latest = app.state.decodes.at(-1);
+    if (total > seen && latest) pending += total - seen;
+    seen = total;
+    if (pending > 0 && latest && Date.now() - lastAnnounced > 10_000) {
+      announcement = `${String(pending)} new decode${pending > 1 ? 's' : ''}. Latest: ${latest.text}`;
+      pending = 0;
+      lastAnnounced = Date.now();
+    }
+  });
+</script>
+
+<Panel id="timeline" code="TRF" title="Decoded traffic" flush>
+  {#snippet actions()}
+    <button
+      type="button"
+      class="btn ghost"
+      aria-pressed={directedOnly}
+      onclick={() => (directedOnly = !directedOnly)}
+    >
+      Directed
+    </button>
+  {/snippet}
+  <div class="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
+  {#if rows.length === 0}
+    <p class="empty">
+      No traffic copied yet. Decodes appear here every 15-second cycle when JS8 is heard.
+    </p>
+  {:else}
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region must be keyboard-reachable) -->
+    <ol class="list" data-testid="timeline" tabindex="0" aria-label="Decoded traffic, newest first">
+      {#each rows as d (d.key)}
+        {@const tags = classify(d.text)}
+        <li
+          class="row {d.kind}"
+          class:flash={tags.flash}
+          class:gn={tags.ghostnet}
+          data-testid="decode-row"
+        >
+          <time class="t mono" datetime={d.utc}>{utcTime(d.utc)}Z</time>
+          <span class="snr mono num" title="Signal-to-noise ratio, dB">{formatSnr(d.snr_db)}</span>
+          <span class="off mono num" title="Audio offset, Hz">{d.offset_hz}</span>
+          <span class="kind" title={d.kind === 'directed' ? 'Directed message' : 'Activity'}>
+            {#if d.kind === 'directed'}<span class="chip dir">DIR</span>{:else}<span
+                class="chip act">ACT</span
+              >{/if}
+          </span>
+          <span class="text mono"
+            >{#if tags.flash}<span class="chip alert">FLASH</span>{/if}{#if tags.ghostnet}<span
+                class="chip gn">{tags.regional ?? 'GN'}</span
+              >{/if}{#if d.from_call && d.text.startsWith(`${d.from_call}:`)}<span class="from"
+                >{d.from_call}</span
+              >{d.text.slice(d.from_call.length)}{:else}{d.text}{/if}</span
+          >
+        </li>
+      {/each}
+    </ol>
+  {/if}
+</Panel>
+
+<style>
+  .empty {
+    margin: 0;
+    padding: var(--g-space-5) var(--g-space-4);
+    color: var(--g-text-muted);
+    font-size: var(--g-text-s);
+    text-align: center;
+  }
+  .list {
+    list-style: none;
+    margin: 0;
+    padding: var(--g-space-1) 0;
+    max-height: clamp(240px, 42vh, 600px);
+    overflow: auto;
+  }
+  .row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 5.4rem 2.8rem 3.2rem 3.2rem 1fr;
+    gap: var(--g-space-2);
+    align-items: baseline;
+    padding: 7px var(--g-space-4);
+    font-size: var(--g-text-s);
+    animation: acquire var(--g-dur-slow) var(--g-ease);
+    transition: background var(--g-dur-fast) var(--g-ease);
+  }
+  .row + .row {
+    border-top: 1px solid var(--g-hairline);
+  }
+  .row:hover {
+    background: var(--g-glass-raised);
+  }
+  .row::before {
+    /* category rail */
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    border-radius: 2px;
+    background: transparent;
+  }
+  .row.directed::before {
+    background: var(--g-signal);
+    opacity: 0.6;
+  }
+  .row.gn::before {
+    background: var(--g-violet);
+  }
+  .row.flash {
+    background: linear-gradient(90deg, rgb(251 113 133 / 0.14), transparent 60%);
+  }
+  .row.flash::before {
+    background: var(--g-alert);
+    box-shadow: 0 0 10px var(--g-alert);
+  }
+  .text .chip {
+    margin-right: 6px;
+    vertical-align: 1px;
+  }
+  .t,
+  .off {
+    color: var(--g-text-muted);
+  }
+  .snr {
+    color: var(--g-chrome);
+    text-align: right;
+  }
+  .off {
+    text-align: right;
+  }
+  .text {
+    color: var(--g-text);
+    overflow-wrap: anywhere;
+  }
+  .from {
+    color: var(--g-accent-a);
+    font-weight: 600;
+  }
+  @keyframes acquire {
+    from {
+      background-color: rgb(103 232 249 / 0.16);
+    }
+  }
+  @media (max-width: 720px) {
+    .row {
+      grid-template-columns: 4.6rem 2.4rem 1fr;
+      padding-inline: var(--g-space-3);
+    }
+    .kind,
+    .off {
+      display: none;
+    }
+  }
+</style>

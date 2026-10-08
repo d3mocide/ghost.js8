@@ -1,0 +1,172 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bridge:
+    name: bridge (ruff, mypy, pytest)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: bridge
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.11.32"
+          enable-cache: true
+      - run: uv sync --locked --all-extras
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest
+
+  web:
+    name: web (eslint, svelte-check, vitest, build)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    name: web e2e (Playwright vs simulated stack)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.11.32"
+          enable-cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: uv --directory bridge sync --locked --all-extras
+      - run: npm --prefix web ci
+      - run: npx --prefix web playwright install --with-deps chromium
+      - run: make e2e
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-traces
+          path: web/test-results/
+          retention-days: 7
+
+  images:
+    name: ${{ matrix.image }} image (build, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [web, bridge]
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker build -t ghostjs8-${{ matrix.image }}:ci ${{ matrix.image }}/
+      - name: Bridge image can write FLAC (soundfile + bundled libsndfile)
+        if: matrix.image == 'bridge'
+        run: >
+          docker run --rm --read-only --entrypoint python ghostjs8-bridge:ci -c
+          "import io, numpy, soundfile; b = io.BytesIO();
+          soundfile.write(b, numpy.zeros(1200, dtype='int16'), 12000, format='FLAC', subtype='PCM_16');
+          assert b.getvalue().startswith(b'fLaC'); print('flac ok')"
+
+  contract:
+    name: contract (generated schema + TS in sync)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.11.32"
+          enable-cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: uv --directory bridge sync --locked --all-extras
+      - run: npm --prefix web ci
+      - run: make contract-check
+
+  decoder-image:
+    name: decoder image (build + boot + healthy, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build (verifies the per-arch JS8Call SHA-256)
+        run: docker build -f decoder/Dockerfile -t ghostjs8-decoder:ci .
+      - name: Boot and wait for healthy
+        run: |
+          docker run -d --name dec ghostjs8-decoder:ci
+          for i in $(seq 1 30); do
+            s=$(docker inspect dec --format '{{.State.Health.Status}}')
+            echo "health=$s"; [ "$s" = healthy ] && exit 0; sleep 5
+          done
+          docker logs dec; exit 1
+
+  acceptance:
+    name: acceptance (real recording -> native JS8Call -> browser WebSocket, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    needs: [bridge, decoder-image]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: make acceptance

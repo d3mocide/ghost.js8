@@ -1,0 +1,73 @@
+[project]
+name = "ghostjs8"
+version = "0.1.0"
+description = "Receive-only JS8Call decoding through web-based KiwiSDR receivers"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "websockets>=15",
+]
+
+[project.optional-dependencies]
+bridge = [
+    "fastapi>=0.115",
+    "pydantic>=2.9",
+    "soundfile>=0.13",
+    "uvicorn>=0.32",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.13.1",
+    "hypothesis>=6.168.5",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-timeout>=2.4.0",
+    "ruff>=0.16.10",
+]
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ghostjs8"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "ASYNC", "PT", "PL", "TRY", "S", "ANN"]
+ignore = [
+    "PLR2004", # magic values are protocol constants here, named where it helps
+    "PLR0913", # keyword-only configuration arguments are fine
+    "PLR0911", # parsers return early by design
+    "E501",    # ruff format owns line length; long literals/log strings are fine
+    "TRY003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/ghostjs8/__main__.py" = ["PLC0415"]  # lazy imports keep each command light
+"tests/**" = ["S101", "S105", "S106", "ANN", "PLR", "ASYNC109", "ASYNC110"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+mypy_path = "src"
+packages = ["ghostjs8"]
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["soundfile"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra --strict-markers --timeout=30"
+markers = ["integration: needs sockets / subprocesses, no Docker"]

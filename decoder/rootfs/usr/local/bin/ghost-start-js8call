@@ -1,0 +1,23 @@
+#!/bin/sh
+# Render JS8Call.ini from the environment, wait for X and PulseAudio, then run
+# JS8Call from the extracted AppImage.
+set -eu
+
+: "${GHOSTJS8_JS8_CALL:=N0CALL}"
+: "${GHOSTJS8_JS8_GRID:=AA00}"
+: "${GHOSTJS8_UDP_PORT:=2242}"
+: "${GHOSTJS8_FILTER_CENTER:=1550}"
+: "${GHOSTJS8_FILTER_WIDTH:=2900}"
+export GHOSTJS8_JS8_CALL GHOSTJS8_JS8_GRID GHOSTJS8_UDP_PORT GHOSTJS8_FILTER_CENTER GHOSTJS8_FILTER_WIDTH
+
+mkdir -p "$HOME/.config"
+python3 -c 'import os, string, sys; sys.stdout.write(string.Template(open(sys.argv[1]).read()).substitute(os.environ))' \
+  /etc/ghostjs8/JS8Call.ini.tmpl > "$HOME/.config/JS8Call.ini"
+
+i=0
+until xdpyinfo >/dev/null 2>&1 && pactl info >/dev/null 2>&1; do
+  i=$((i + 1)); [ "$i" -gt 50 ] && { echo "X/PulseAudio not ready" >&2; exit 1; }
+  sleep 0.2
+done
+# Exec the real binary (AppRun is a symlink) so the process is named JS8Call.
+exec /opt/js8call/usr/bin/JS8Call

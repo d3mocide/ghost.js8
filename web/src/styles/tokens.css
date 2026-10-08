@@ -1,0 +1,108 @@
+/*
+ * ghost.js8 design tokens — the single source for colour, glass, radii, blur,
+ * spacing, type and motion. Palette "ghost signal": a deep solid gradient with
+ * a live ASCII field behind frosted glass, aqua→violet accent, mint for live signal.
+ * Contrast: --g-text and --g-text-muted are >= 7:1 and >= 4.5:1 against the
+ * most opaque glass surface over --g-bg-0 (checked against #141826).
+ */
+:root {
+  color-scheme: dark;
+
+  /* base: solid gradient, ink → midnight indigo → plum */
+  --g-bg-0: #04050b;
+  --g-bg-1: #0a0c1f;
+  --g-bg-2: #1a1033;
+  --g-bg-glow-a: rgb(56 189 248 / 0.1); /* top-right, cool */
+  --g-bg-glow-b: rgb(139 92 246 / 0.14); /* bottom-left, warm violet */
+
+  /* glass */
+  --g-glass: rgb(12 14 30 / 0.6);
+  --g-glass-strong: rgb(18 22 40 / 0.86);
+  --g-glass-raised: rgb(255 255 255 / 0.06); /* controls, rows on hover */
+  --g-glass-sunken: rgb(3 4 10 / 0.45); /* inputs, canvases */
+  --g-glass-solid: #141826; /* fallback when blur is unavailable or unwanted */
+  --g-glass-blur: 20px;
+  --g-glass-saturate: 170%;
+  --g-border: rgb(255 255 255 / 0.08);
+  --g-border-strong: rgb(255 255 255 / 0.16);
+  --g-edge-hi: rgb(255 255 255 / 0.22); /* lit top edge of glass */
+  --g-hairline: rgb(255 255 255 / 0.05);
+  --g-shadow: 0 24px 48px -24px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  --g-inner-glow: inset 0 1px 0 rgb(255 255 255 / 0.07);
+
+  /* text */
+  --g-text: #eef1fb;
+  --g-text-muted: #a3adc6;
+  --g-text-dim: #6c7690; /* decorative only, never sole carrier of meaning */
+
+  /* accent: the brand gradient, aqua → violet */
+  --g-accent-a: #67e8f9;
+  --g-accent-b: #a78bfa;
+  --g-accent: linear-gradient(120deg, var(--g-accent-a), var(--g-accent-b));
+  --g-accent-soft: linear-gradient(120deg, rgb(103 232 249 / 0.16), rgb(167 139 250 / 0.16));
+
+  /* semantic accents: each also has an icon/label, colour is never alone */
+  --g-signal: #5eead4; /* live signal, ok */
+  --g-signal-soft: rgb(94 234 212 / 0.12);
+  --g-chrome: #7dd3fc; /* UI chrome, focus */
+  --g-chrome-soft: rgb(125 211 252 / 0.12);
+  --g-violet: #c4b5fd; /* GhostNet */
+  --g-violet-soft: rgb(167 139 250 / 0.14);
+  --g-warn: #fcd34d; /* degraded, stale */
+  --g-warn-soft: rgb(252 211 77 / 0.12);
+  --g-alert: #fb7185; /* overload, fault, flash */
+  --g-alert-soft: rgb(251 113 133 / 0.14);
+
+  /* type */
+  --g-font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  /* display: wordmark, panel titles, big readouts. Terminal bite, used large. */
+  --g-font-display: 'Share Tech Mono', var(--g-font-mono);
+  --g-font-ui: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --g-text-xs: 0.6875rem;
+  --g-text-s: 0.8125rem;
+  --g-text-m: 0.9375rem;
+  --g-text-l: 1.125rem;
+  --g-text-xl: 1.5rem;
+  --g-text-xxl: 2.25rem;
+  --g-tracking-caps: 0.12em;
+
+  /* space (4 px grid) */
+  --g-space-1: 0.25rem;
+  --g-space-2: 0.5rem;
+  --g-space-3: 0.75rem;
+  --g-space-4: 1rem;
+  --g-space-5: 1.5rem;
+  --g-space-6: 2rem;
+
+  /* radii */
+  --g-radius-s: 8px;
+  --g-radius-m: 12px;
+  --g-radius-l: 20px;
+  --g-radius-pill: 999px;
+
+  /* motion */
+  --g-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --g-dur-fast: 140ms;
+  --g-dur: 260ms;
+  --g-dur-slow: 900ms;
+
+  /* layout */
+  --g-gutter: var(--g-space-4);
+  --g-gap: 14px;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --g-glass: var(--g-glass-solid);
+    --g-glass-strong: var(--g-glass-solid);
+    --g-glass-blur: 0px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --g-dur-fast: 0ms;
+    --g-dur: 0ms;
+    --g-dur-slow: 0ms;
+  }
+}

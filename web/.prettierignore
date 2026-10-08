@@ -1,0 +1,6 @@
+dist/
+node_modules/
+package-lock.json
+src/lib/protocol/generated.ts
+test-results/
+playwright-report/
