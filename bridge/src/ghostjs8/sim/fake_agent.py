@@ -28,6 +28,8 @@ SCRIPT: list[tuple[str, str | None, str, str, int, int]] = [
     ("KG9B", "KN4CRD", "KN4CRD HEARTBEAT SNR -14", "EN52", -14, 521),
     ("KN4ZXG", None, "@HB HEARTBEAT FM16", "FM16", -24, 1866),
     ("W1GHZ", "@ALLCALL", "@ALLCALL CQ CQ CQ FN31", "FN31pr", -9, 1210),
+    ("W4GHT", "@GSTFLASH", "@GSTFLASH DRILL DRILL DRILL - EXERCISE ONLY", "EM73", -7, 1450),
+    ("KN4CRD", "@GHOSTNET", "@GHOSTNET CHECKING IN EM73", "EM73", -11, 980),
 ]
 
 

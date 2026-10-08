@@ -25,7 +25,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `DIRECTORY_URL=file://${process.cwd()}/../tools/fixtures/directory-sample.js KIWI_PORT=28070 AGENT_PORT=28074 BRIDGE_PORT=${String(BRIDGE_PORT)} PERIOD=3 ../tools/dev-stack.sh`,
+      command: `GHOSTNET=1 SEED_NET=1 HOME_GRID=EN34 DIRECTORY_URL=file://${process.cwd()}/../tools/fixtures/directory-sample.js KIWI_PORT=28070 AGENT_PORT=28074 BRIDGE_PORT=${String(BRIDGE_PORT)} PERIOD=3 ../tools/dev-stack.sh`,
       url: `http://127.0.0.1:${String(BRIDGE_PORT)}/healthz`,
       reuseExistingServer: false,
       timeout: 120_000,

@@ -109,13 +109,17 @@ def main() -> None:
         from ghostjs8.sim.fake_agent import main as fake_agent_main
 
         fake_agent_main(rest)
+    elif cmd == "seed-net":
+        from ghostjs8.sim.seed_net import main as seed_main
+
+        seed_main(rest)
     elif cmd == "acceptance":
         from ghostjs8.sim.acceptance import main as acceptance_main
 
         sys.exit(acceptance_main(rest))
     else:
         sys.stderr.write(
-            "usage: python -m ghostjs8 {bridge|agent|fake-kiwi|fake-agent|acceptance} [args]\n"
+            "usage: python -m ghostjs8 {bridge|agent|fake-kiwi|fake-agent|seed-net|acceptance} [args]\n"
         )
         sys.exit(2)
 

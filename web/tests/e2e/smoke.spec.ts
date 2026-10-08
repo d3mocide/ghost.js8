@@ -89,6 +89,8 @@ test.describe('ghost.js8 smoke', () => {
   });
 
   test('passes an automated accessibility scan', async ({ page }) => {
+    // Scan the settled UI: entry animations briefly tint rows.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
     await expect(page.getByTestId('decode-row').first()).toBeVisible({ timeout: 20_000 });
     const results = await new AxeBuilder({ page }).exclude('.maplibregl-canvas').analyze();

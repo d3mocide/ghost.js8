@@ -13,6 +13,10 @@
   import TimelinePanel from '../features/timeline/TimelinePanel.svelte';
   import StationsPanel from '../features/stations/StationsPanel.svelte';
   import MapPanel from '../features/map/MapPanel.svelte';
+  import GhostNetPanel from '../features/ghostnet/GhostNetPanel.svelte';
+  import NetLogView from '../features/ghostnet/NetLogView.svelte';
+  import FlashAlert from '../features/ghostnet/FlashAlert.svelte';
+  import { netIdFromHash } from '../lib/ghostnet';
   import { formatMHz } from '../lib/format';
 
   let { url }: { url?: string } = $props();
@@ -20,9 +24,10 @@
   const app = new GhostApp(url);
   provideApp(app);
 
-  type Tab = 'traffic' | 'waterfall' | 'stations' | 'map' | 'controls' | 'status';
+  type Tab = 'traffic' | 'ghostnet' | 'waterfall' | 'stations' | 'map' | 'controls' | 'status';
   const TABS: readonly [Tab, string][] = [
     ['traffic', 'Traffic'],
+    ['ghostnet', 'GhostNet'],
     ['waterfall', 'Waterfall'],
     ['stations', 'Stations'],
     ['map', 'Map'],
@@ -31,6 +36,8 @@
   ];
   let tab = $state<Tab>('traffic');
   let phone = $state(false);
+  let hash = $state(typeof window === 'undefined' ? '' : window.location.hash);
+  const netId = $derived(netIdFromHash(hash));
   let receiverPanel: { focusSearch(): void } | undefined = $state();
 
   const show = (t: Tab): boolean => !phone || tab === t;
@@ -54,10 +61,16 @@
     };
     update();
     mq.addEventListener('change', update);
+    const onHash = (): void => {
+      hash = window.location.hash;
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener('hashchange', onHash);
     window.addEventListener('pagehide', release);
     app.start();
     return () => {
       mq.removeEventListener('change', update);
+      window.removeEventListener('hashchange', onHash);
       window.removeEventListener('pagehide', release);
     };
   });
@@ -79,41 +92,47 @@
     </div>
   </header>
 
+  <FlashAlert />
   <SituationBar onSwitch={switchReceiver} />
 
-  {#if phone}
-    <nav class="tabs" aria-label="Views">
-      {#each TABS as [id, label] (id)}
-        <button
-          type="button"
-          class="tab"
-          aria-current={tab === id ? 'page' : undefined}
-          onclick={() => (tab = id)}
-        >
-          {label}
-        </button>
-      {/each}
-    </nav>
-  {/if}
+  {#if netId}
+    <NetLogView {netId} />
+  {:else}
+    {#if phone}
+      <nav class="tabs" aria-label="Views">
+        {#each TABS as [id, label] (id)}
+          <button
+            type="button"
+            class="tab"
+            aria-current={tab === id ? 'page' : undefined}
+            onclick={() => (tab = id)}
+          >
+            {label}
+          </button>
+        {/each}
+      </nav>
+    {/if}
 
-  <main class="grid" class:phone>
-    <div class="col controls">
-      {#if show('controls')}
-        <ReceiverPanel bind:this={receiverPanel} />
-        <TuningPanel />
-        <AudioPanel />
-      {/if}
-    </div>
-    <div class="col center">
-      {#if show('waterfall')}<WaterfallPanel />{/if}
-      {#if show('traffic')}<TimelinePanel />{/if}
-    </div>
-    <div class="col side">
-      {#if show('status')}<StatusPanel />{/if}
-      {#if show('stations')}<StationsPanel />{/if}
-      {#if show('map')}<MapPanel />{/if}
-    </div>
-  </main>
+    <main class="grid" class:phone>
+      <div class="col controls">
+        {#if show('controls')}
+          <ReceiverPanel bind:this={receiverPanel} />
+          <TuningPanel />
+          <AudioPanel />
+        {/if}
+      </div>
+      <div class="col center">
+        {#if show('waterfall')}<WaterfallPanel />{/if}
+        {#if show('traffic')}<TimelinePanel />{/if}
+      </div>
+      <div class="col side">
+        {#if show('ghostnet')}<GhostNetPanel />{/if}
+        {#if show('status')}<StatusPanel />{/if}
+        {#if show('stations')}<StationsPanel />{/if}
+        {#if show('map')}<MapPanel />{/if}
+      </div>
+    </main>
+  {/if}
 
   <footer class="foot mono">
     ghost.js8 · receive-only · decodes by native JS8Call · build {app.state.hello?.build ?? '—'}

@@ -19,6 +19,8 @@ export class GhostApp {
   volume = $state(0.8);
   audioStats = $state<PlayerStats | null>(null);
   now = $state(Date.now());
+  /** When this view started; older traffic (history) never raises live alerts. */
+  readonly startedAt = Date.now();
 
   private readonly client: BridgeClient;
   private readonly player = new AudioPlayer();

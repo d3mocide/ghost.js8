@@ -2,6 +2,7 @@
   import Panel from '../../components/Panel.svelte';
   import { useApp } from '../../lib/state/context';
   import { formatSnr, utcTime } from '../../lib/format';
+  import { classify } from '../../lib/ghostnet';
 
   const app = useApp();
   let directedOnly = $state(false);
@@ -44,9 +45,16 @@
       No traffic copied yet. Decodes appear here every 15-second cycle when JS8 is heard.
     </p>
   {:else}
-    <ol class="list" data-testid="timeline">
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region must be keyboard-reachable) -->
+    <ol class="list" data-testid="timeline" tabindex="0" aria-label="Decoded traffic, newest first">
       {#each rows as d (d.key)}
-        <li class="row {d.kind}" data-testid="decode-row">
+        {@const tags = classify(d.text)}
+        <li
+          class="row {d.kind}"
+          class:flash={tags.flash}
+          class:gn={tags.ghostnet}
+          data-testid="decode-row"
+        >
           <time class="t mono" datetime={d.utc}>{utcTime(d.utc)}Z</time>
           <span class="snr mono num" title="Signal-to-noise ratio, dB">{formatSnr(d.snr_db)}</span>
           <span class="off mono num" title="Audio offset, Hz">{d.offset_hz}</span>
@@ -55,7 +63,11 @@
                 aria-hidden="true">·</span
               > ACT{/if}
           </span>
-          <span class="text mono">{d.text}</span>
+          <span class="text mono"
+            >{#if tags.flash}<span class="tag alert">FLASH</span>{/if}{#if tags.ghostnet}<span
+                class="tag gn">{tags.regional ?? 'GN'}</span
+              >{/if}{d.text}</span
+          >
         </li>
       {/each}
     </ol>
@@ -88,6 +100,27 @@
   }
   .row.directed {
     background: linear-gradient(90deg, rgb(61 255 154 / 0.07), transparent 40%);
+  }
+  .row.gn {
+    background: linear-gradient(90deg, rgb(92 225 255 / 0.08), transparent 45%);
+  }
+  .row.flash {
+    background: linear-gradient(90deg, rgb(255 77 94 / 0.2), transparent 60%);
+  }
+  .tag {
+    display: inline-block;
+    margin-right: 6px;
+    padding: 0 4px;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    font-size: 10px;
+    vertical-align: 1px;
+  }
+  .tag.alert {
+    color: var(--g-alert);
+  }
+  .tag.gn {
+    color: var(--g-chrome);
   }
   .t,
   .off {
