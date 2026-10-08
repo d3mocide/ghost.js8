@@ -20,5 +20,6 @@ ENV GHOSTJS8_BRIDGE_UPSTREAM=bridge:8073 \
     NGINX_ENVSUBST_FILTER=GHOSTJS8_
 COPY --from=build /src/dist /usr/share/nginx/html
 COPY deploy/default.conf.template /etc/nginx/templates/default.conf.template
+COPY deploy/security-headers.conf /etc/nginx/snippets/security-headers.conf
 EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=3s --retries=3 CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]

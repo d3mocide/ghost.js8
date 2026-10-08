@@ -226,7 +226,7 @@ async def test_connect_timeout() -> None:
         await asyncio.Event().wait()
 
     @contextlib.asynccontextmanager
-    async def slow_connector(url: str) -> AsyncIterator[object]:
+    async def slow_connector(url: str, address: str | None = None) -> AsyncIterator[object]:
         await never(url)
         yield None  # pragma: no cover
 

@@ -40,12 +40,15 @@ from ghostjs8.contract.messages import (
 )
 from ghostjs8.contract.messages import Station as StationMsg
 from ghostjs8.decoders.base import DecodeEvent, DecoderError, DecoderHealth, DecoderSink, SpotEvent
+from ghostjs8.receivers.address_policy import ReceiverAddressRefused
 from ghostjs8.receivers.base import (
     AUDIO_SAMPLE_RATE,
     AudioBlock,
     ReceiverError,
     ReceiverRejected,
     ReceiverSink,
+    ReceiverTimeout,
+    ReceiverUnreachable,
     RejectReason,
     Tuning,
     UnsupportedAudioFormat,
@@ -100,6 +103,9 @@ class ReceiverTarget:
     password: str = ""
     name: str | None = None
     tls: bool = False
+    #: Operator-configured (GHOSTJS8_RECEIVER_HOST). Viewer- and autopilot-chosen
+    #: targets are untrusted: their addresses go through the AddressPolicy.
+    trusted: bool = False
 
 
 class StationObserver(Protocol):
@@ -122,6 +128,9 @@ class StationConfig:
     waterfall_bins: int = 1024
     idle_disconnect_s: float = 0.0  # 0 = keep listening with nobody watching
     history_decodes: int = 200
+    # Politeness floor between connection attempts, whoever triggers them (viewer
+    # re-selects, autopilot re-picks, reconnects): at most one per this interval.
+    min_connect_interval_s: float = 5.0
 
 
 class Station(ReceiverSink, DecoderSink):
@@ -147,6 +156,7 @@ class Station(ReceiverSink, DecoderSink):
         self.decoder = decoder_factory(self)
         self._receiver_factory = receiver_factory
         self._receiver_backoff = receiver_backoff or Backoff()
+        self._last_connect_at: float | None = None
         self._decoder_backoff = decoder_backoff or Backoff(minimum_s=1.0, maximum_s=15.0)
 
         self.tuning = tuning or Tuning(dial_hz=14_078_000)
@@ -202,6 +212,15 @@ class Station(ReceiverSink, DecoderSink):
                 self._set_state("idle", detail="nobody watching" if self._idle_paused else "")
                 await self._target_changed.wait()
                 continue
+            if self._last_connect_at is not None:
+                wait = self.config.min_connect_interval_s - (
+                    self.clock.monotonic() - self._last_connect_at
+                )
+                if wait > 0:
+                    await asyncio.sleep(min(wait, self.config.min_connect_interval_s))
+                    if self.target is not target:
+                        continue  # superseded while waiting: only the latest choice connects
+            self._last_connect_at = self.clock.monotonic()
             self._set_state("connecting", detail=f"{target.host}:{target.port}")
             self.receiver = self._receiver_factory(target, self.tuning, self)
             run = asyncio.create_task(self.receiver.run())
@@ -248,9 +267,21 @@ class Station(ReceiverSink, DecoderSink):
             log.error("receiver sends unsupported audio: %s", exc)
             self._set_state("failed", detail=str(exc))
             return None
+        if isinstance(exc, ReceiverAddressRefused):
+            log.warning("receiver address refused: %s", exc)
+            self._set_state("failed", detail=str(exc))
+            return None
         if isinstance(exc, ReceiverError):
             log.warning("receiver session ended: %s", exc)
-            self._set_state("backoff", detail=str(exc))
+            # Viewers get a coarse reason; the exact error (refused vs. HTTP
+            # status vs. reset) would turn the bridge into a port scanner.
+            if isinstance(exc, ReceiverTimeout):
+                detail = "receiver did not answer in time"
+            elif isinstance(exc, ReceiverUnreachable):
+                detail = "receiver unreachable"
+            else:
+                detail = str(exc)
+            self._set_state("backoff", detail=detail)
             return self._receiver_backoff.next_delay()
         raise exc
 

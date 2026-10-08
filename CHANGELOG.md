@@ -39,3 +39,23 @@ First MVP.
   transmit extension changes the chip, not the name.
 - Net log viewer (`#/net/<id>`) with click-to-seek audio, and a live
   @GSTFLASH alert banner. Timeline tags for FLASH/GN/DIR traffic.
+- **64-bit ARM support (linux/arm64)** alongside amd64. The decoder picks the
+  matching JS8Call build with one SHA-256 pin per architecture. The AppImage
+  is unpacked with `unsquashfs` and never executed during the build. CI builds
+  and boots the decoder and runs the real-recording acceptance test on native
+  ARM runners.
+- Release workflow: a `vX.Y.Z` tag publishes multi-arch images to GHCR.
+  Compose can pull them (`GHOSTJS8_IMAGE_PREFIX`, `GHOSTJS8_TAG`). CI also
+  builds the bridge and web images on both architectures.
+- Security hardening from a pre-release review:
+  - receiver addresses are resolved and every address checked at connect
+    time (closes `127.1`-style tricks, internal DNS names and rebinding);
+  - redirects are refused;
+  - private receivers are opt-in;
+  - viewers see only generic connection errors;
+  - receiver connects are spaced at least 5 s apart;
+  - the WebSocket is same-origin by default;
+  - Kiwi passwords cannot carry whitespace or control characters;
+  - nginx security headers apply on every path;
+  - containers drop all capabilities with `no-new-privileges`;
+  - IPv6 receiver literals are bracketed.

@@ -99,7 +99,12 @@ def fast_backoff() -> Backoff:
 
 
 def station(clock: ManualClock | None = None, **kw: object) -> Station:
-    opts: dict[str, object] = {"receiver_backoff": fast_backoff(), "clock": clock or ManualClock()}
+    opts: dict[str, object] = {
+        "receiver_backoff": fast_backoff(),
+        "clock": clock or ManualClock(),
+        # The 5 s politeness floor between connects has its own tests below.
+        "config": StationConfig(min_connect_interval_s=0),
+    }
     opts.update(kw)
     return Station(Hub(), FakeDecoder, FakeReceiver, **opts)  # type: ignore[arg-type]
 
@@ -247,7 +252,7 @@ async def test_audio_routes_to_decoder_and_only_subscribed_clients() -> None:
 
 async def test_waterfall_frame_rate_cap() -> None:
     clock = ManualClock()
-    st = station(clock, config=StationConfig(waterfall_max_fps=10))
+    st = station(clock, config=StationConfig(waterfall_max_fps=10, min_connect_interval_s=0))
     c = st.hub.add()
     c.waterfall = True
     row = WaterfallRow(seq=1, start_hz=0, span_hz=12_000, bins=bytes(1024))
@@ -386,7 +391,7 @@ async def test_idle_disconnect_and_resume() -> None:
     st = station(
         clock,
         target=ReceiverTarget("kiwi.example", 8073),
-        config=StationConfig(idle_disconnect_s=60),
+        config=StationConfig(idle_disconnect_s=60, min_connect_interval_s=0),
     )
     task = await run_station(st)
     try:

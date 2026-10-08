@@ -1,5 +1,8 @@
-# ghost.js8 — receive-only JS8 listening post.
+# ghost.js8 — JS8 ops console (current builds are receive-only).
 #   cp .env.example .env && docker compose up -d --build
+# Or use published multi-arch images (amd64/arm64) instead of building:
+#   GHOSTJS8_IMAGE_PREFIX=ghcr.io/d3mocide/ghostjs8 GHOSTJS8_TAG=0.1.0 \
+#     docker compose pull && docker compose up -d --no-build
 # Put your reverse proxy (NPM / Caddy) in front of the web port; it terminates TLS
 # and should handle authentication (see docs/operations.md).
 name: ghostjs8
@@ -7,9 +10,15 @@ name: ghostjs8
 x-build-secrets: &build-secrets
   secrets: [extra_ca]
 
+# No container needs extra privileges: drop every capability and forbid gaining any.
+x-hardened: &hardened
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
 services:
   web:
-    image: ghostjs8-web:local
+    <<: *hardened
+    image: ${GHOSTJS8_IMAGE_PREFIX:-ghostjs8}-web:${GHOSTJS8_TAG:-local}
     build:
       context: web
       <<: *build-secrets
@@ -21,7 +30,8 @@ services:
     networks: [edge]
 
   bridge:
-    image: ghostjs8-bridge:local
+    <<: *hardened
+    image: ${GHOSTJS8_IMAGE_PREFIX:-ghostjs8}-bridge:${GHOSTJS8_TAG:-local}
     build:
       context: bridge
       <<: *build-secrets
@@ -41,7 +51,8 @@ services:
     networks: [edge, decoder]
 
   decoder:
-    image: ghostjs8-decoder:local
+    <<: *hardened
+    image: ${GHOSTJS8_IMAGE_PREFIX:-ghostjs8}-decoder:${GHOSTJS8_TAG:-local}
     build:
       context: .
       dockerfile: decoder/Dockerfile

@@ -296,7 +296,9 @@ class Tune(_Msg):
 class SelectReceiver(_Msg):
     type: Literal["select_receiver"] = "select_receiver"
     receiver: ReceiverRef
-    password: str = Field(default="", max_length=128)
+    # Sent verbatim inside "SET auth t=kiwi p=...": no whitespace or control characters,
+    # which would let a value smuggle extra parameters into that command.
+    password: str = Field(default="", max_length=128, pattern=r"^[^\s\x00-\x1f\x7f]*$")
 
 
 class DisconnectReceiver(_Msg):

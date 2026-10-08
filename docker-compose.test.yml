@@ -6,8 +6,14 @@ name: ghostjs8-acceptance
 x-build-secrets: &build-secrets
   secrets: [extra_ca]
 
+# Same hardening as production, so the acceptance test exercises it.
+x-hardened: &hardened
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
 services:
   fake-kiwi:
+    <<: *hardened
     image: ghostjs8-bridge:test
     build:
       context: bridge
@@ -20,6 +26,7 @@ services:
     networks: [isolated]
 
   decoder:
+    <<: *hardened
     image: ghostjs8-decoder:test
     build:
       context: .
@@ -28,6 +35,7 @@ services:
     networks: [isolated]
 
   bridge:
+    <<: *hardened
     image: ghostjs8-bridge:test
     environment:
       GHOSTJS8_AGENT_URL: ws://decoder:8074/agent
@@ -41,6 +49,7 @@ services:
     networks: [isolated]
 
   acceptance:
+    <<: *hardened
     image: ghostjs8-bridge:test
     command: ["python", "-m", "ghostjs8", "acceptance", "--url", "ws://bridge:8073/ws", "--timeout", "150"]
     healthcheck: { disable: true }

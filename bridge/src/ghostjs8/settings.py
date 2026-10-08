@@ -6,6 +6,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from ghostjs8.receivers.address_policy import AddressPolicy
 from ghostjs8.receivers.base import Mode, Tuning
 
 
@@ -26,7 +27,7 @@ class Settings:
     listen_host: str = "0.0.0.0"  # noqa: S104 - container service on an internal network
     listen_port: int = 8073
     agent_url: str = "ws://decoder:8074/agent"
-    allowed_origins: tuple[str, ...] = ()  # empty: allow any (put auth in front)
+    allowed_origins: tuple[str, ...] = ()  # empty: same-origin only (Origin must match Host)
     max_clients: int = 16
     # Optional receiver to start listening on at boot (persistent listening).
     receiver_host: str | None = None
@@ -39,7 +40,11 @@ class Settings:
     retention_days: int = 30
     idle_disconnect_minutes: int = 0  # 0 = keep listening with nobody watching
     waterfall_max_fps: float = 10.0
-    allow_private_receivers: bool = True  # LAN Kiwis are common; loopback/link-local always refused
+    # Viewer/autopilot-chosen receivers must resolve to public addresses unless
+    # this is on (LAN Kiwis). Loopback/link-local are always refused.
+    allow_private_receivers: bool = False
+    # Simulated stack only (tools/dev-stack.sh): the fake KiwiSDR on 127.0.0.1.
+    allow_loopback_receivers: bool = False
     directory_url: str = "http://rx.linkfanel.net/kiwisdr_com.js"
     # GhostNet autopilot (docs/ghostnet.md)
     ghostnet: bool = False
@@ -50,6 +55,13 @@ class Settings:
     ghostnet_park: bool = True
     recordings_dir: str = "/data/nets"
     net_retention_days: int = 90
+
+    @property
+    def receiver_policy(self) -> AddressPolicy:
+        return AddressPolicy(
+            allow_private=self.allow_private_receivers,
+            allow_loopback=self.allow_loopback_receivers,
+        )
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -82,7 +94,8 @@ class Settings:
             retention_days=_int(e, "GHOSTJS8_RETENTION_DAYS", 30),
             idle_disconnect_minutes=_int(e, "GHOSTJS8_IDLE_DISCONNECT_MINUTES", 0),
             waterfall_max_fps=float(e.get("GHOSTJS8_WATERFALL_MAX_FPS", "10") or 10),
-            allow_private_receivers=_bool(e, "GHOSTJS8_ALLOW_PRIVATE_RECEIVERS", default=True),
+            allow_private_receivers=_bool(e, "GHOSTJS8_ALLOW_PRIVATE_RECEIVERS", default=False),
+            allow_loopback_receivers=_bool(e, "GHOSTJS8_ALLOW_LOOPBACK_RECEIVERS", default=False),
             directory_url=e.get("GHOSTJS8_DIRECTORY_URL", cls.directory_url),
             ghostnet=_bool(e, "GHOSTJS8_GHOSTNET", default=False),
             ghostnet_region=e.get("GHOSTJS8_GHOSTNET_REGION", "").strip().lower(),

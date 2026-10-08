@@ -11,6 +11,49 @@ make up                     # docker compose up -d
 Only the `web` container publishes a port (default `127.0.0.1:8080`). Point
 your reverse proxy at it; it terminates TLS and handles authentication.
 
+### Published images and ARM
+
+Tagged releases publish multi-arch images (`linux/amd64` and `linux/arm64`) to
+GHCR. ARM means a Raspberry Pi 4/5 on a **64-bit** OS, Apple Silicon or ARM
+cloud servers; there is no 32-bit ARM build of JS8Call. To run them instead
+of building:
+
+```sh
+# in .env
+GHOSTJS8_IMAGE_PREFIX=ghcr.io/d3mocide/ghostjs8
+GHOSTJS8_TAG=0.1.0
+```
+
+```sh
+docker compose pull && docker compose up -d --no-build
+```
+
+Building locally on an ARM host works too (`make images`); the decoder picks
+the matching JS8Call build automatically.
+
+### Receivers on your LAN
+
+By default, a receiver chosen in the UI (or picked by the GhostNet autopilot)
+must resolve to a **public** address. The bridge resolves the name, checks
+every address, and connects to the checked address, so tricks like `127.1`,
+names that point inside your network, or DNS rebinding are refused. To use
+your own LAN KiwiSDR, either:
+
+- set it as the boot receiver (`GHOSTJS8_RECEIVER_HOST`), which is trusted as
+  configured, or
+- set `GHOSTJS8_ALLOW_PRIVATE_RECEIVERS=true` to allow private and CGNAT
+  (e.g. tailnet) addresses from the UI.
+
+Loopback, link-local and cloud-metadata addresses are always refused.
+
+### Hardening
+
+All containers run as non-root, with `cap_drop: [ALL]` and
+`no-new-privileges`. The decoder sits on an internal network with no egress.
+The browser WebSocket accepts same-origin pages only unless
+`GHOSTJS8_ALLOWED_ORIGINS` lists others. Connection attempts to receivers are
+spaced at least 5 s apart, whoever triggers them.
+
 ### Reverse proxy
 
 The bridge WebSocket lives at `/ws` on the same origin. Your proxy must pass

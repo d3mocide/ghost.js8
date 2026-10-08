@@ -10,6 +10,7 @@
 <p align="center">
   <a href="https://github.com/d3mocide/ghost.js8/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/d3mocide/ghost.js8/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Mode RX" src="https://img.shields.io/badge/mode-RX-5eead4?labelColor=0a0c1f">
+  <img alt="amd64 and arm64" src="https://img.shields.io/badge/platform-amd64%20%7C%20arm64-7dd3fc?labelColor=0a0c1f">
   <img alt="License GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-a78bfa?labelColor=0a0c1f">
 </p>
 
@@ -46,6 +47,8 @@ GHOSTJS8_GHOSTNET=on
 GHOSTJS8_GHOSTNET_REGION=na    # na | eu | aus
 GHOSTJS8_HOME_GRID=EM73        # your Maidenhead grid
 ```
+
+Runs on **amd64 and 64-bit ARM** (Raspberry Pi 4/5 on a 64-bit OS, Apple Silicon, ARM servers). Releases publish multi-arch images, so you can pull instead of build: set `GHOSTJS8_IMAGE_PREFIX=ghcr.io/d3mocide/ghostjs8` and `GHOSTJS8_TAG` in `.env`, then run `docker compose pull && docker compose up -d --no-build`.
 
 Put a reverse proxy in front for TLS and authentication ([operations](docs/operations.md)). Keep the host NTP-synced, because JS8 decoding depends on accurate time.
 

@@ -12,12 +12,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import ipaddress
 import json
 import logging
-import re
 from collections.abc import AsyncIterator, Awaitable, Sequence
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
@@ -37,6 +36,7 @@ from ghostjs8.contract.messages import (
     Tune,
     client_message_adapter,
 )
+from ghostjs8.receivers.address_policy import AddressPolicy, ReceiverAddressRefused
 from ghostjs8.receivers.base import Tuning
 from ghostjs8.receivers.directory import Directory
 from ghostjs8.session.station import ReceiverTarget, Station
@@ -48,35 +48,48 @@ log = logging.getLogger("ghostjs8.api")
 CONTROL_BURST = 10  # control messages per client ...
 CONTROL_WINDOW_S = 5.0  # ... per this many seconds
 MAX_CLIENT_MESSAGE_BYTES = 4096
-_HOSTNAME = re.compile(
-    r"^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*\.?$"
-)
-_BLOCKED_NAMES = frozenset({"localhost", "decoder", "bridge", "web", "fake-kiwi"})
 
 
 class InvalidReceiver(ValueError):
     pass
 
 
-def validate_receiver_host(host: str, *, allow_private: bool) -> str:
-    """Reject receiver addresses that would point the bridge at itself or its peers.
+def validate_receiver_host(host: str, *, allow_private: bool, allow_loopback: bool = False) -> str:
+    """Early, friendly check of a viewer-supplied host string.
 
-    Literal IPs are checked against loopback/link-local/multicast/unspecified,
-    and private ranges unless allowed. Hostnames are syntax-checked; the
-    container's own service names are refused.
+    The binding check happens at connect time, on the resolved addresses
+    (receivers/address_policy.py); this only rejects what is wrong on its face.
     """
-    h = host.strip().rstrip(".").lower()
     try:
-        ip = ipaddress.ip_address(h.strip("[]"))
+        return AddressPolicy(allow_private=allow_private, allow_loopback=allow_loopback).check_host(
+            host
+        )
+    except ReceiverAddressRefused as exc:
+        raise InvalidReceiver(str(exc)) from None
+
+
+def origin_allowed(origin: str | None, host: str | None, allowed: tuple[str, ...]) -> bool:
+    """Browser WebSocket origin check.
+
+    With an explicit allow-list, the Origin must be on it. Without one, only
+    same-origin pages may connect (Origin host:port == Host). Requests with no
+    Origin header are not from a browser page and cannot be cross-site.
+    """
+    if origin is None:
+        return True
+    if allowed:
+        return origin in allowed
+    if not host:
+        return False
+    o = urlsplit(origin)
+    default = {"http": 80, "https": 443}.get(o.scheme)
+    try:
+        o_port = o.port or default
+        h = urlsplit(f"//{host}")
+        h_port = h.port or default
     except ValueError:
-        if not _HOSTNAME.match(h) or h in _BLOCKED_NAMES or h.endswith(".localhost"):
-            raise InvalidReceiver(f"not an allowed receiver host: {host!r}") from None
-        return h
-    if ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_unspecified or ip.is_reserved:
-        raise InvalidReceiver(f"not an allowed receiver address: {host!r}")
-    if ip.is_private and not allow_private:
-        raise InvalidReceiver(f"private receiver addresses are disabled: {host!r}")
-    return str(ip)
+        return False
+    return (o.hostname or "") == (h.hostname or "") and o_port == h_port
 
 
 class RateLimiter:
@@ -144,7 +157,7 @@ def create_app(
     @app.websocket("/ws")
     async def ws_endpoint(ws: WebSocket) -> None:
         origin = ws.headers.get("origin")
-        if settings.allowed_origins and origin not in settings.allowed_origins:
+        if not origin_allowed(origin, ws.headers.get("host"), settings.allowed_origins):
             await ws.close(code=1008, reason="origin not allowed")
             return
         try:
@@ -242,7 +255,9 @@ async def _handle(
     elif isinstance(msg, SelectReceiver):
         try:
             host = validate_receiver_host(
-                msg.receiver.host, allow_private=settings.allow_private_receivers
+                msg.receiver.host,
+                allow_private=settings.allow_private_receivers,
+                allow_loopback=settings.allow_loopback_receivers,
             )
         except InvalidReceiver as exc:
             _error(client, "invalid_receiver", str(exc))

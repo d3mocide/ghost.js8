@@ -58,6 +58,7 @@ Run from the repo root.
 | `make acceptance` | real-recording end-to-end test in Docker (`docker-compose.test.yml`, isolated network) |
 | `make e2e` | Playwright (desktop + phone) against the simulated stack; set `PW_CHROMIUM_PATH` to use a preinstalled Chromium |
 | `make images` / `make up` / `make down` | production compose build / start / stop |
+| `git tag vX.Y.Z && git push --tags` | release: CI publishes multi-arch (amd64 + arm64) images to GHCR (`.github/workflows/release.yml`) |
 | `tools/dev-stack.sh` + `npm --prefix web run dev` | UI development against the simulated stack |
 
 Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
@@ -96,7 +97,21 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
 ## Gotchas (learned the hard way)
 
 - JS8Call 3.x AppImage fails on Ubuntu 22.04 — use **24.04**. Docker has no FUSE,
-  so the AppImage is **extracted at build time** (`--appimage-extract`).
+  so the AppImage is **unpacked at build time with `unsquashfs`** at the
+  offset after its ELF runtime. It is never executed, which also lets an
+  amd64 host prepare the arm64 tree. Upstream ships x86_64 and aarch64 only, with
+  one SHA-256 pin per architecture.
+- Receivers chosen by viewers or the autopilot go through
+  `receivers/address_policy.py`: resolve, check **every** address, dial the
+  checked IP, refuse redirects. Only the operator's boot target
+  (`ReceiverTarget(trusted=True)`) skips it. The simulated stack needs
+  `GHOSTJS8_ALLOW_LOOPBACK_RECEIVERS=true` (set by `tools/dev-stack.sh`).
+- `StationConfig.min_connect_interval_s` (5 s) spaces all receiver connects.
+  Station unit tests that reconnect quickly pass `min_connect_interval_s=0`.
+- Local arm64 checks: `docker run --privileged --rm tonistiigi/binfmt --install arm64`
+  (mount `binfmt_misc` first in a sandbox), then
+  `DOCKER_DEFAULT_PLATFORM=linux/arm64 make acceptance`. It is slow under
+  emulation but passes.
 - Qt hides PulseAudio **monitor** sources from its input list. Expose the null
   sink's monitor via **`module-remap-source`** as an ordinary capture source.
 - JS8Call's own audio output goes to a separate **discard** sink.

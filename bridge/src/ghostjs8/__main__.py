@@ -37,7 +37,13 @@ def _bridge() -> None:
 
     def make_receiver(target: ReceiverTarget, tuning: Tuning, sink: ReceiverSink) -> ReceiverHandle:
         return KiwiReceiver(
-            KiwiEndpoint(target.host, target.port, target.password, tls=target.tls),
+            KiwiEndpoint(
+                target.host,
+                target.port,
+                target.password,
+                tls=target.tls,
+                policy=None if target.trusted else settings.receiver_policy,
+            ),
             tuning,
             sink,
             clock=clock,
@@ -47,10 +53,17 @@ def _bridge() -> None:
         return Js8CallNativeDecoder(settings.agent_url, sink, clock=clock)
 
     target = (
-        ReceiverTarget(settings.receiver_host, settings.receiver_port, settings.receiver_password)
+        ReceiverTarget(
+            settings.receiver_host,
+            settings.receiver_port,
+            settings.receiver_password,
+            trusted=True,  # operator-configured
+        )
         if settings.receiver_host
         else None
     )
+    if settings.allow_loopback_receivers:
+        log.warning("GHOSTJS8_ALLOW_LOOPBACK_RECEIVERS is on: for the simulated stack only")
     station = Station(
         Hub(max_clients=settings.max_clients),
         make_decoder,

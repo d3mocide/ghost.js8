@@ -18,11 +18,12 @@ import logging
 import socket
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from websockets.asyncio.client import ClientConnection, connect
 from websockets.exceptions import ConnectionClosed, InvalidHandshake, InvalidStatus, InvalidURI
 
+from ghostjs8.receivers.address_policy import AddressPolicy
 from ghostjs8.receivers.base import (
     AUDIO_SAMPLE_RATE,
     AudioBlock,
@@ -70,7 +71,9 @@ INFO_KEYS = frozenset(
     }
 )
 
-Connector = Callable[[str], "contextlib.AbstractAsyncContextManager[ClientConnection]"]
+# (url, address) -> connection. ``address`` is the policy-checked IP to dial, or
+# None for trusted (operator-configured) endpoints, which resolve normally.
+Connector = Callable[[str, str | None], "contextlib.AbstractAsyncContextManager[ClientConnection]"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,10 +82,14 @@ class KiwiEndpoint:
     port: int = 8073
     password: str = ""
     tls: bool = False
+    #: None = trusted (operator-configured). Otherwise resolved and checked
+    #: before connecting; see receivers/address_policy.py.
+    policy: AddressPolicy | None = None
 
     def stream_url(self, session_id: int, stream: StreamKind) -> str:
         scheme = "wss" if self.tls else "ws"
-        return f"{scheme}://{self.host}:{self.port}/{session_id}/{stream}"
+        host = f"[{self.host}]" if ":" in self.host and not self.host.startswith("[") else self.host
+        return f"{scheme}://{host}:{self.port}/{session_id}/{stream}"
 
 
 def session_id_from_url(url: str) -> int:
@@ -113,14 +120,29 @@ def passband_center_hz(tuning: Tuning) -> int:
     return tuning.dial_hz + (lo + hi) // 2
 
 
-def _default_connector(url: str) -> contextlib.AbstractAsyncContextManager[ClientConnection]:
-    return connect(
+class _connect_no_redirects(connect):
+    """websockets' connect, but an HTTP redirect is an error, never followed."""
+
+    def process_redirect(self, exc: Exception) -> Exception | str:
+        return exc
+
+
+def _default_connector(
+    url: str, address: str | None
+) -> contextlib.AbstractAsyncContextManager[ClientConnection]:
+    pinned: dict[str, Any] = {}
+    if address is not None:
+        # Dial the checked address directly; the URL keeps the name for the
+        # Host header and TLS SNI. No proxy: it would re-resolve the name.
+        pinned = {"host": address, "proxy": None}
+    return _connect_no_redirects(
         url,
         compression=None,
         open_timeout=None,  # the adapter applies its own timeout
         ping_interval=None,  # Kiwi uses application-level keepalives
         max_size=2**20,
         user_agent_header=IDENT,
+        **pinned,
     )
 
 
@@ -188,11 +210,16 @@ class KiwiReceiver:
         verify_pairing(snd_url, wf_url)
         logx = {"session": self.session_id, "host": self.endpoint.host}
 
+        address: str | None = None
+        if self.endpoint.policy is not None:
+            async with asyncio.timeout(self._connect_timeout_s):
+                address = await self.endpoint.policy.resolve(self.endpoint.host, self.endpoint.port)
+
         async with contextlib.AsyncExitStack() as stack:
-            self._snd = await self._open(stack, snd_url)
+            self._snd = await self._open(stack, snd_url, address)
             await self._send(self._snd, f"SET auth t=kiwi p={self.endpoint.password}")
             if self._waterfall:
-                self._wf = await self._open(stack, wf_url)
+                self._wf = await self._open(stack, wf_url, address)
                 await self._send(self._wf, f"SET auth t=kiwi p={self.endpoint.password}")
             log.info("kiwi streams open", extra=logx)
             failure: ReceiverError | None = None
@@ -229,10 +256,12 @@ class KiwiReceiver:
 
     # ------------------------------------------------------------ plumbing
 
-    async def _open(self, stack: contextlib.AsyncExitStack, url: str) -> ClientConnection:
+    async def _open(
+        self, stack: contextlib.AsyncExitStack, url: str, address: str | None
+    ) -> ClientConnection:
         try:
             async with asyncio.timeout(self._connect_timeout_s):
-                return await stack.enter_async_context(self._connector(url))
+                return await stack.enter_async_context(self._connector(url, address))
         except TimeoutError as exc:
             raise ReceiverTimeout(f"connect to {url} timed out") from exc
         except InvalidStatus as exc:
