@@ -5,7 +5,9 @@ description = "Receive-only JS8Call decoding through web-based KiwiSDR receivers
 readme = "../README.md"
 license = "GPL-3.0-or-later"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "websockets>=15",
+]
 
 [dependency-groups]
 dev = [
@@ -13,6 +15,7 @@ dev = [
     "mypy>=2.4.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pytest-timeout>=2.4.0",
     "ruff>=0.16.10",
 ]
 
@@ -30,10 +33,15 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "ASYNC", "PT", "PL", "TRY", "S", "ANN"]
-ignore = ["PLR2004", "TRY003"]
+ignore = [
+    "PLR2004", # magic values are protocol constants here, named where it helps
+    "PLR0913", # keyword-only configuration arguments are fine
+    "TRY003",
+]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "ANN", "PLR"]
+"tests/**" = ["S101", "S105", "S106", "ANN", "PLR", "ASYNC109", "ASYNC110"]
+"src/ghostjs8/sim/**" = ["PLR0911"]
 
 [tool.mypy]
 strict = true
@@ -46,5 +54,5 @@ warn_unreachable = true
 testpaths = ["tests"]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
-addopts = "-ra --strict-markers"
+addopts = "-ra --strict-markers --timeout=30"
 markers = ["integration: needs sockets / subprocesses, no Docker"]
