@@ -27,7 +27,7 @@ from ghostjs8.receivers.base import (
 from ghostjs8.receivers.kiwisdr.client import KiwiEndpoint, KiwiReceiver
 from ghostjs8.sim.fake_kiwi import FakeKiwi, FakeKiwiConfig
 
-pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
+pytestmark = pytest.mark.integration
 
 TUNING = Tuning(dial_hz=14_078_000, mode="usb", low_cut_hz=100, high_cut_hz=3000)
 
