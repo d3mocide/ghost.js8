@@ -81,14 +81,31 @@ jobs:
           path: web/test-results/
           retention-days: 7
 
-  web-image:
-    name: web image (build)
-    runs-on: ubuntu-24.04
+  images:
+    name: ${{ matrix.image }} image (build, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [web, bridge]
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: docker build -t ghostjs8-web:ci web/
+      - run: docker build -t ghostjs8-${{ matrix.image }}:ci ${{ matrix.image }}/
+      - name: Bridge image can write FLAC (soundfile + bundled libsndfile)
+        if: matrix.image == 'bridge'
+        run: >
+          docker run --rm --read-only --entrypoint python ghostjs8-bridge:ci -c
+          "import io, numpy, soundfile; b = io.BytesIO();
+          soundfile.write(b, numpy.zeros(1200, dtype='int16'), 12000, format='FLAC', subtype='PCM_16');
+          assert b.getvalue().startswith(b'fLaC'); print('flac ok')"
 
   contract:
     name: contract (generated schema + TS in sync)
@@ -111,13 +128,21 @@ jobs:
       - run: make contract-check
 
   decoder-image:
-    name: decoder image (build + boot + healthy)
-    runs-on: ubuntu-24.04
+    name: decoder image (build + boot + healthy, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Build (verifies JS8Call SHA-256)
+      - name: Build (verifies the per-arch JS8Call SHA-256)
         run: docker build -f decoder/Dockerfile -t ghostjs8-decoder:ci .
       - name: Boot and wait for healthy
         run: |
@@ -129,9 +154,17 @@ jobs:
           docker logs dec; exit 1
 
   acceptance:
-    name: acceptance (real recording -> native JS8Call -> browser WebSocket)
-    runs-on: ubuntu-24.04
+    name: acceptance (real recording -> native JS8Call -> browser WebSocket, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     needs: [bridge, decoder-image]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -8,20 +8,29 @@ One container = one decoder slot = one receiver being decoded.
 | What | Pin | Where |
 |---|---|---|
 | Base | `ubuntu:24.04@sha256:534baea6…eb55` | `decoder/Dockerfile` `UBUNTU_IMAGE` |
-| JS8Call | `3.0.3`, `JS8Call-v3.0.3-x86_64.AppImage` | `JS8CALL_VERSION` |
-| JS8Call SHA-256 | `3f89bd821f281c59a9384c08a3ad783ea3b9ac6abf319ce6c0d881c2ecc6e6cd` | `JS8CALL_SHA256` — build fails on mismatch |
+| JS8Call | `3.0.3`, `JS8Call-v3.0.3-{x86_64,aarch64}.AppImage` (chosen by `TARGETARCH`) | `JS8CALL_VERSION` |
+| JS8Call SHA-256, amd64 | `3f89bd821f281c59a9384c08a3ad783ea3b9ac6abf319ce6c0d881c2ecc6e6cd` | `JS8CALL_SHA256_AMD64`; the build fails on mismatch |
+| JS8Call SHA-256, arm64 | `003b7e6f41abc702710051e648d3c673110fe31e8f275bbfa9508f560672b8a4` | `JS8CALL_SHA256_ARM64`; the build fails on mismatch |
 | apt packages | Ubuntu archive at build time (GPG-signed); not version-pinned | see `SECURITY-UPDATES.md` |
 
-The SHA-256 was recorded on first download (2026-10-08). Upstream publishes no
-detached signature for this release; their release workflow produces a GitHub
-build attestation, which can be checked with
-`gh attestation verify JS8Call-v3.0.3-x86_64.AppImage --repo JS8Call-improved/js8call-improved`.
+The SHA-256s were recorded on first download (amd64 on 2026-10-07, arm64 on
+2026-10-08). Upstream publishes no checksums or detached signatures for this
+release. Their release workflow produces a GitHub build attestation, which can
+be checked with
+`gh attestation verify JS8Call-v3.0.3-<arch>.AppImage --repo JS8Call-improved/js8call-improved`.
 The v3.0.3 tag is commit `4c592bd9…`, the same commit the acceptance-test
 fixture is pinned to.
 
 Ubuntu 24.04 is required: the 3.x AppImage fails on 22.04. Docker has no FUSE,
-so the AppImage is extracted at build time (`--appimage-extract`) in a throwaway
-stage. The extracted tree bundles Qt 6 and the PulseAudio client; the runtime
+so the AppImage is unpacked at build time in a throwaway stage. It is **never
+executed**: the squashfs payload starts right after the ELF runtime
+(`e_shoff + e_shentsize × e_shnum`) and is extracted with `unsquashfs`. That
+also lets an amd64 host prepare the arm64 tree.
+
+**Architectures:** `linux/amd64` and `linux/arm64`. That covers a Raspberry
+Pi 4/5 on a 64-bit OS, Apple Silicon and ARM cloud servers. Upstream ships no
+32-bit ARM build. CI builds and boots the decoder on both, and runs the
+real-recording acceptance test on native ARM runners. The extracted tree bundles Qt 6 and the PulseAudio client; the runtime
 stage adds only what `ldd` showed missing (GL/EGL, X11/xcb, fontconfig,
 freetype, harfbuzz, libusb).
 

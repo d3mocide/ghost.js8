@@ -10,24 +10,42 @@ ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.32@sha256:df4cae8f3a96d175e2e5f992e597550
 # Nothing from this stage except the extracted tree reaches the final image.
 # ---------------------------------------------------------------------------
 FROM ${UBUNTU_IMAGE} AS fetch
+# Set by BuildKit for the platform being built (amd64 | arm64).
+ARG TARGETARCH
 ARG JS8CALL_VERSION=3.0.3
-ARG JS8CALL_SHA256=3f89bd821f281c59a9384c08a3ad783ea3b9ac6abf319ce6c0d881c2ecc6e6cd
-ARG JS8CALL_URL=https://github.com/JS8Call-improved/js8call-improved/releases/download/v${JS8CALL_VERSION}/JS8Call-v${JS8CALL_VERSION}-x86_64.AppImage
+# One pinned artifact per architecture. Upstream publishes no checksums; these
+# were recorded on first download (see docs/SECURITY-UPDATES.md).
+ARG JS8CALL_SHA256_AMD64=3f89bd821f281c59a9384c08a3ad783ea3b9ac6abf319ce6c0d881c2ecc6e6cd
+ARG JS8CALL_SHA256_ARM64=003b7e6f41abc702710051e648d3c673110fe31e8f275bbfa9508f560672b8a4
+ARG JS8CALL_BASE_URL=https://github.com/JS8Call-improved/js8call-improved/releases/download/v${JS8CALL_VERSION}
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl ca-certificates \
+ && apt-get install -y --no-install-recommends curl ca-certificates squashfs-tools \
  && rm -rf /var/lib/apt/lists/*
 # Optional secret "extra_ca": a full CA bundle for builds behind a TLS-intercepting
 # proxy. Used for this download only; never copied into the image. Integrity is
 # guaranteed by the SHA-256 check, not by TLS.
+#
+# The AppImage is never executed at build time: its squashfs payload starts right
+# after the ELF runtime (e_shoff + e_shentsize * e_shnum) and is unpacked with
+# unsquashfs. That also lets an amd64 host prepare the arm64 tree.
 RUN --mount=type=secret,id=extra_ca,required=false \
     set -eu; \
+    case "${TARGETARCH:-amd64}" in \
+      amd64) arch=x86_64;  sha="${JS8CALL_SHA256_AMD64}" ;; \
+      arm64) arch=aarch64; sha="${JS8CALL_SHA256_ARM64}" ;; \
+      *) echo "unsupported architecture: ${TARGETARCH} (JS8Call ships x86_64 and aarch64 only)" >&2; exit 1 ;; \
+    esac; \
+    img=/tmp/js8call.AppImage; \
     cacert=""; [ -s /run/secrets/extra_ca ] && cacert="--cacert /run/secrets/extra_ca"; \
-    curl -fsSL --retry 4 --retry-delay 2 $cacert -o /tmp/js8call.AppImage "${JS8CALL_URL}"; \
-    echo "${JS8CALL_SHA256}  /tmp/js8call.AppImage" | sha256sum -c -; \
-    chmod +x /tmp/js8call.AppImage; \
-    cd /opt && /tmp/js8call.AppImage --appimage-extract >/dev/null; \
-    mv /opt/squashfs-root /opt/js8call; \
-    rm /tmp/js8call.AppImage
+    curl -fsSL --retry 4 --retry-delay 2 $cacert -o "$img" \
+      "${JS8CALL_BASE_URL}/JS8Call-v${JS8CALL_VERSION}-${arch}.AppImage"; \
+    echo "${sha}  $img" | sha256sum -c -; \
+    shoff=$(od -An -t u8 -j 40 -N 8 "$img" | tr -d ' '); \
+    shentsize=$(od -An -t u2 -j 58 -N 2 "$img" | tr -d ' '); \
+    shnum=$(od -An -t u2 -j 60 -N 2 "$img" | tr -d ' '); \
+    unsquashfs -q -no-progress -o $((shoff + shentsize * shnum)) -d /opt/js8call "$img" >/dev/null; \
+    test -x /opt/js8call/usr/bin/JS8Call; \
+    rm "$img"
 
 # ---------------------------------------------------------------------------
 # agent: the decoder-agent's virtualenv (base deps only: websockets), built on

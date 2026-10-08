@@ -6,7 +6,7 @@ reproducible and an update is a reviewable diff.
 | What | Pinned how | Where |
 |---|---|---|
 | Base images | tag **and** sha256 digest | `decoder/Dockerfile`, `bridge/Dockerfile`, `web/Dockerfile` (`ARG …_IMAGE=`) |
-| JS8Call | version + SHA-256 of the AppImage; build fails on mismatch | `decoder/Dockerfile` (`JS8CALL_VERSION`, `JS8CALL_SHA256`) |
+| JS8Call | version + per-architecture SHA-256 of the AppImage; build fails on mismatch | `decoder/Dockerfile` (`JS8CALL_VERSION`, `JS8CALL_SHA256_AMD64`, `JS8CALL_SHA256_ARM64`) |
 | Python deps | `uv.lock` with hashes; images install with `uv sync --locked` (hash-verified) | `bridge/uv.lock` |
 | Node deps | exact versions + `package-lock.json` (integrity hashes); `npm ci` | `web/package*.json` |
 | GitHub Actions | full commit SHA (with version comment) | `.github/workflows/*.yml` |
@@ -27,16 +27,19 @@ Renovate does **not** update JS8Call. That is a manual, deliberate change.
 ## Updating JS8Call
 
 1. Read the upstream release notes (`JS8Call-improved/js8call-improved`).
-2. Download the new `JS8Call-vX.Y.Z-x86_64.AppImage`, compute its SHA-256, and
-   check the GitHub build attestation if you can:
-   `gh attestation verify JS8Call-vX.Y.Z-x86_64.AppImage --repo JS8Call-improved/js8call-improved`.
-3. Update `JS8CALL_VERSION` and `JS8CALL_SHA256` in `decoder/Dockerfile`.
+2. Download **both** `JS8Call-vX.Y.Z-x86_64.AppImage` and
+   `JS8Call-vX.Y.Z-aarch64.AppImage`, compute their SHA-256s, and check the
+   GitHub build attestations if you can:
+   `gh attestation verify JS8Call-vX.Y.Z-<arch>.AppImage --repo JS8Call-improved/js8call-improved`.
+3. Update `JS8CALL_VERSION`, `JS8CALL_SHA256_AMD64` and `JS8CALL_SHA256_ARM64`
+   in `decoder/Dockerfile`.
 4. Diff `JS8_UI/Configuration.cpp`, `WideGraph.cpp` and the UDP message code
    for renamed settings keys or message shapes; update
    `decoder/rootfs/etc/ghostjs8/JS8Call.ini.tmpl` and
    `bridge/src/ghostjs8/decoders/js8call_native/messages.py`.
 5. `make decoder-image && make acceptance`. **Do not merge unless the
-   real-recording acceptance test passes.**
+   real-recording acceptance test passes**, on both architectures (CI runs it
+   on native amd64 and arm64 runners).
 
 ## Rebuild cadence
 
