@@ -59,14 +59,16 @@
           <span class="snr mono num" title="Signal-to-noise ratio, dB">{formatSnr(d.snr_db)}</span>
           <span class="off mono num" title="Audio offset, Hz">{d.offset_hz}</span>
           <span class="kind" title={d.kind === 'directed' ? 'Directed message' : 'Activity'}>
-            {#if d.kind === 'directed'}<span aria-hidden="true">➤</span> DIR{:else}<span
-                aria-hidden="true">·</span
-              > ACT{/if}
+            {#if d.kind === 'directed'}<span class="chip dir">DIR</span>{:else}<span
+                class="chip act">ACT</span
+              >{/if}
           </span>
           <span class="text mono"
-            >{#if tags.flash}<span class="tag alert">FLASH</span>{/if}{#if tags.ghostnet}<span
-                class="tag gn">{tags.regional ?? 'GN'}</span
-              >{/if}{d.text}</span
+            >{#if tags.flash}<span class="chip alert">FLASH</span>{/if}{#if tags.ghostnet}<span
+                class="chip gn">{tags.regional ?? 'GN'}</span
+              >{/if}{#if d.from_call && d.text.startsWith(`${d.from_call}:`)}<span class="from"
+                >{d.from_call}</span
+              >{d.text.slice(d.from_call.length)}{:else}{d.text}{/if}</span
           >
         </li>
       {/each}
@@ -77,50 +79,63 @@
 <style>
   .empty {
     margin: 0;
-    padding: var(--g-space-4);
+    padding: var(--g-space-5) var(--g-space-4);
     color: var(--g-text-muted);
     font-size: var(--g-text-s);
+    text-align: center;
   }
   .list {
     list-style: none;
     margin: 0;
-    padding: 0;
-    max-height: clamp(220px, 40vh, 560px);
+    padding: var(--g-space-1) 0;
+    max-height: clamp(240px, 42vh, 600px);
     overflow: auto;
   }
   .row {
+    position: relative;
     display: grid;
-    grid-template-columns: 5.4rem 3rem 3.4rem 3.6rem 1fr;
+    grid-template-columns: 5.4rem 2.8rem 3.2rem 3.2rem 1fr;
     gap: var(--g-space-2);
     align-items: baseline;
-    padding: 6px var(--g-space-3);
-    border-bottom: 1px solid rgb(92 225 255 / 0.06);
+    padding: 7px var(--g-space-4);
     font-size: var(--g-text-s);
     animation: acquire var(--g-dur-slow) var(--g-ease);
+    transition: background var(--g-dur-fast) var(--g-ease);
   }
-  .row.directed {
-    background: linear-gradient(90deg, rgb(61 255 154 / 0.07), transparent 40%);
+  .row + .row {
+    border-top: 1px solid var(--g-hairline);
   }
-  .row.gn {
-    background: linear-gradient(90deg, rgb(92 225 255 / 0.08), transparent 45%);
+  .row:hover {
+    background: var(--g-glass-raised);
+  }
+  .row::before {
+    /* category rail */
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    border-radius: 2px;
+    background: transparent;
+  }
+  .row.directed::before {
+    background: var(--g-signal);
+    opacity: 0.6;
+  }
+  .row.gn::before {
+    background: var(--g-violet);
   }
   .row.flash {
-    background: linear-gradient(90deg, rgb(255 77 94 / 0.2), transparent 60%);
+    background: linear-gradient(90deg, rgb(251 113 133 / 0.14), transparent 60%);
   }
-  .tag {
-    display: inline-block;
+  .row.flash::before {
+    background: var(--g-alert);
+    box-shadow: 0 0 10px var(--g-alert);
+  }
+  .text .chip {
     margin-right: 6px;
-    padding: 0 4px;
-    border: 1px solid currentColor;
-    border-radius: 3px;
-    font-size: 10px;
     vertical-align: 1px;
-  }
-  .tag.alert {
-    color: var(--g-alert);
-  }
-  .tag.gn {
-    color: var(--g-chrome);
   }
   .t,
   .off {
@@ -133,33 +148,26 @@
   .off {
     text-align: right;
   }
-  .kind {
-    font-family: var(--g-font-mono);
-    font-size: var(--g-text-xs);
-    letter-spacing: 0.08em;
-    color: var(--g-text-muted);
-  }
-  .directed .kind {
-    color: var(--g-signal);
-  }
   .text {
     color: var(--g-text);
     overflow-wrap: anywhere;
   }
+  .from {
+    color: var(--g-accent-a);
+    font-weight: 600;
+  }
   @keyframes acquire {
     from {
-      background-color: rgb(61 255 154 / 0.22);
-      filter: blur(1px);
-    }
-    to {
-      filter: none;
+      background-color: rgb(103 232 249 / 0.16);
     }
   }
   @media (max-width: 720px) {
     .row {
-      grid-template-columns: 5rem 2.6rem 3rem 1fr;
+      grid-template-columns: 4.6rem 2.4rem 1fr;
+      padding-inline: var(--g-space-3);
     }
-    .kind {
+    .kind,
+    .off {
       display: none;
     }
   }

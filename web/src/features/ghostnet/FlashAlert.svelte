@@ -40,11 +40,14 @@
     gap: var(--g-space-3);
     align-items: center;
     flex-wrap: wrap;
-    padding: var(--g-space-3);
-    border: 1px solid var(--g-alert);
-    border-radius: var(--g-radius-m);
-    background: linear-gradient(90deg, rgb(255 77 94 / 0.25), rgb(255 77 94 / 0.08));
-    box-shadow: 0 0 32px rgb(255 77 94 / 0.25);
+    padding: var(--g-space-3) var(--g-space-4);
+    border: 1px solid rgb(251 113 133 / 0.6);
+    border-radius: var(--g-radius-l);
+    background:
+      linear-gradient(90deg, rgb(251 113 133 / 0.22), rgb(251 113 133 / 0.06)), var(--g-glass);
+    backdrop-filter: blur(var(--g-glass-blur)) saturate(var(--g-glass-saturate));
+    -webkit-backdrop-filter: blur(var(--g-glass-blur)) saturate(var(--g-glass-saturate));
+    box-shadow: 0 0 40px -8px rgb(251 113 133 / 0.45);
     animation: pulse 1.2s var(--g-ease) 3;
   }
   .badge {
@@ -67,7 +70,7 @@
   }
   @keyframes pulse {
     50% {
-      box-shadow: 0 0 48px rgb(255 77 94 / 0.55);
+      box-shadow: 0 0 56px -4px rgb(251 113 133 / 0.65);
     }
   }
 </style>

@@ -89,24 +89,24 @@
               stations: { type: 'geojson', data: stationGeoJson() },
             },
             layers: [
-              { id: 'bg', type: 'background', paint: { 'background-color': '#04060c' } },
+              { id: 'bg', type: 'background', paint: { 'background-color': '#060814' } },
               {
                 id: 'fields',
                 type: 'line',
                 source: 'fields',
-                paint: { 'line-color': 'rgba(92,225,255,0.08)', 'line-width': 1 },
+                paint: { 'line-color': 'rgba(125,211,252,0.06)', 'line-width': 1 },
               },
               {
                 id: 'land',
                 type: 'fill',
                 source: 'land',
-                paint: { 'fill-color': '#0d1526', 'fill-outline-color': 'rgba(92,225,255,0.35)' },
+                paint: { 'fill-color': '#151a38', 'fill-outline-color': 'rgba(167,139,250,0.4)' },
               },
               {
                 id: 'borders',
                 type: 'line',
                 source: 'borders',
-                paint: { 'line-color': 'rgba(92,225,255,0.18)', 'line-width': 0.6 },
+                paint: { 'line-color': 'rgba(167,139,250,0.22)', 'line-width': 0.6 },
               },
               {
                 id: 'halo',
@@ -114,7 +114,7 @@
                 source: 'stations',
                 paint: {
                   'circle-radius': 10,
-                  'circle-color': 'rgba(61,255,154,0.15)',
+                  'circle-color': 'rgba(94,234,212,0.18)',
                   'circle-blur': 0.6,
                 },
               },
@@ -124,8 +124,8 @@
                 source: 'stations',
                 paint: {
                   'circle-radius': 3.5,
-                  'circle-color': '#3dff9a',
-                  'circle-stroke-color': '#05060a',
+                  'circle-color': '#5eead4',
+                  'circle-stroke-color': '#060814',
                   'circle-stroke-width': 1,
                 },
               },
@@ -182,7 +182,7 @@
 <style>
   .map {
     height: clamp(200px, 30vh, 360px);
-    background: #04060c;
+    background: #060814;
   }
   .count {
     color: var(--g-chrome);

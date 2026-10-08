@@ -35,8 +35,11 @@
         {app.muted ? 'Muted' : 'Mute'}
       </button>
     {:else}
-      <button type="button" class="btn" onclick={() => app.enableAudio()} data-testid="audio-toggle"
-        >Enable audio</button
+      <button
+        type="button"
+        class="btn primary"
+        onclick={() => app.enableAudio()}
+        data-testid="audio-toggle">Enable audio</button
       >
     {/if}
   </div>
@@ -70,11 +73,10 @@
     flex-wrap: wrap;
   }
   .volume {
-    margin-top: var(--g-space-3);
+    margin-top: var(--g-space-4);
   }
   .volume input {
     width: 100%;
-    accent-color: var(--g-signal);
   }
   .stats,
   .help {

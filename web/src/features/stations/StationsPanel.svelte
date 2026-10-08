@@ -42,8 +42,13 @@
 
 <style>
   .count {
-    color: var(--g-chrome);
-    font-size: var(--g-text-s);
+    min-width: 1.6rem;
+    padding: 1px 8px;
+    border-radius: var(--g-radius-pill);
+    background: var(--g-accent-soft);
+    color: var(--g-text);
+    font-size: var(--g-text-xs);
+    text-align: center;
   }
   .empty {
     margin: 0;
@@ -62,9 +67,9 @@
   }
   th,
   td {
-    padding: 5px var(--g-space-3);
+    padding: 7px var(--g-space-4);
     text-align: left;
-    border-bottom: 1px solid rgb(92 225 255 / 0.06);
+    border-bottom: 1px solid var(--g-hairline);
   }
   thead th {
     position: sticky;
@@ -72,13 +77,20 @@
     background: var(--g-glass-strong);
     color: var(--g-text-muted);
     font-family: var(--g-font-mono);
-    font-size: var(--g-text-xs);
-    font-weight: 400;
-    letter-spacing: var(--g-tracking-caps);
+    backdrop-filter: blur(12px);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
   }
   .call {
-    color: var(--g-signal);
+    color: var(--g-accent-a);
     font-weight: 600;
+  }
+  tbody tr {
+    transition: background var(--g-dur-fast) var(--g-ease);
+  }
+  tbody tr:hover {
+    background: var(--g-glass-raised);
   }
 </style>

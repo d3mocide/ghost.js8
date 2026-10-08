@@ -125,17 +125,20 @@
   .window {
     display: grid;
     gap: 2px;
-    padding: var(--g-space-2) var(--g-space-3);
-    border: 1px solid var(--g-border);
-    border-radius: var(--g-radius-s);
-    background: rgb(5 6 10 / 0.45);
+    padding: var(--g-space-3);
+    border: 1px solid var(--g-hairline);
+    border-radius: var(--g-radius-m);
+    background:
+      radial-gradient(120% 140% at 100% 0%, rgb(167 139 250 / 0.14), transparent 60%),
+      var(--g-glass-raised);
   }
   .window.live {
-    border-color: rgb(61 255 154 / 0.5);
-    box-shadow: inset 0 0 18px rgb(61 255 154 / 0.08);
+    border-color: rgb(94 234 212 / 0.4);
+    box-shadow: 0 0 24px -6px rgb(94 234 212 / 0.35);
   }
   .label {
-    font-size: var(--g-text-s);
+    font-size: var(--g-text-m);
+    font-weight: 600;
     display: flex;
     gap: var(--g-space-2);
     align-items: center;
@@ -156,7 +159,10 @@
     color: var(--g-text);
   }
   .when strong {
-    color: var(--g-chrome);
+    background: var(--g-accent);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
     font-weight: 600;
   }
   .times {
@@ -167,7 +173,9 @@
     margin: var(--g-space-4) 0 var(--g-space-2);
     font-size: var(--g-text-xs);
     color: var(--g-text-muted);
-    font-weight: 400;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
   .nets {
     list-style: none;
@@ -188,19 +196,23 @@
     min-width: 0;
     display: grid;
     gap: 1px;
-    padding: var(--g-space-2);
-    border-radius: var(--g-radius-s);
-    border: 1px solid transparent;
-    background: rgb(255 255 255 / 0.02);
+    padding: var(--g-space-2) var(--g-space-3);
+    border-radius: var(--g-radius-m);
+    border: 1px solid var(--g-hairline);
+    background: var(--g-glass-raised);
     color: var(--g-text);
     text-decoration: none;
+    transition:
+      background var(--g-dur-fast) var(--g-ease),
+      border-color var(--g-dur-fast) var(--g-ease);
   }
   .nets a:hover {
     border-color: var(--g-border-strong);
-    background: var(--g-chrome-soft);
+    background: rgb(255 255 255 / 0.09);
   }
   .name {
     font-size: var(--g-text-s);
+    font-weight: 600;
   }
   .meta {
     font-size: var(--g-text-xs);

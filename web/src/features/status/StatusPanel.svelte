@@ -71,14 +71,19 @@
     margin: 0;
     padding: 0;
     display: grid;
-    gap: var(--g-space-2);
+    gap: 4px;
   }
   li {
     display: grid;
     grid-template-columns: minmax(8rem, 1fr) auto auto;
     align-items: center;
     gap: var(--g-space-2);
+    padding: 4px 0;
     font-size: var(--g-text-s);
+  }
+  li + li {
+    border-top: 1px solid var(--g-hairline);
+    padding-top: 8px;
   }
   .name {
     color: var(--g-text-muted);

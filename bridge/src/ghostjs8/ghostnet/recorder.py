@@ -39,13 +39,14 @@ MAX_WATERFALL_ROWS = 4 * 3600  # hard cap: four hours at one row per second
 FLASH = re.compile(r"@GSTFLASH\b", re.IGNORECASE)
 
 # "spectre" colormap stops, identical to web/src/lib/waterfall/colormap.ts
-_SPECTRE = (
-    (0.0, 2, 3, 8),
-    (0.3, 24, 18, 64),
-    (0.55, 26, 92, 150),
-    (0.72, 48, 186, 214),
-    (0.86, 61, 255, 154),
-    (1.0, 236, 255, 240),
+_SPECTRE = (  # keep in step with web/src/lib/waterfall/colormap.ts SPECTRE
+    (0.0, 3, 4, 12),
+    (0.3, 22, 20, 68),
+    (0.5, 62, 44, 140),
+    (0.66, 46, 130, 206),
+    (0.8, 94, 234, 212),
+    (0.92, 204, 250, 240),
+    (1.0, 255, 255, 255),
 )
 
 

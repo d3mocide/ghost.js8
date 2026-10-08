@@ -121,20 +121,26 @@
 <style>
   .axis {
     position: relative;
-    height: 20px;
-    border-bottom: 1px solid var(--g-border);
+    height: 22px;
+    margin: 0 var(--g-space-3); /* same inset as .wrap so ticks line up */
     font-size: 10px;
     color: var(--g-text-muted);
   }
   .axis span {
     position: absolute;
-    top: 3px;
+    top: 4px;
     transform: translateX(-50%);
   }
   .wrap {
     position: relative;
-    height: clamp(180px, 32vh, 420px);
-    background: #020308;
+    height: clamp(220px, 38vh, 520px);
+    margin: 0 var(--g-space-3) var(--g-space-3);
+    border-radius: var(--g-radius-m);
+    overflow: hidden;
+    background: #03040c;
+    box-shadow:
+      inset 0 0 0 1px var(--g-hairline),
+      inset 0 10px 30px rgb(0 0 0 / 0.5);
   }
   canvas {
     position: absolute;
@@ -147,24 +153,31 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    border-left: 1px solid rgb(61 255 154 / 0.55);
-    border-right: 1px solid rgb(61 255 154 / 0.55);
-    background: rgb(61 255 154 / 0.04);
+    border-left: 1px solid rgb(103 232 249 / 0.5);
+    border-right: 1px solid rgb(167 139 250 / 0.5);
+    background: linear-gradient(90deg, rgb(103 232 249 / 0.05), rgb(167 139 250 / 0.05));
     pointer-events: none;
   }
   .stale {
     position: absolute;
-    inset: auto 0 0;
-    padding: var(--g-space-1) var(--g-space-2);
-    background: rgb(5 6 10 / 0.75);
+    left: 50%;
+    bottom: var(--g-space-3);
+    transform: translateX(-50%);
+    padding: 6px 14px;
+    border-radius: var(--g-radius-pill);
+    border: 1px solid rgb(252 211 77 / 0.3);
+    background: rgb(5 6 12 / 0.7);
+    backdrop-filter: blur(8px);
     color: var(--g-warn);
     font-family: var(--g-font-mono);
     font-size: var(--g-text-xs);
-    letter-spacing: var(--g-tracking-caps);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
   }
   .cmap {
-    min-height: 28px;
+    min-height: 30px;
     width: auto;
+    border-radius: var(--g-radius-pill);
     font-size: var(--g-text-xs);
   }
 </style>

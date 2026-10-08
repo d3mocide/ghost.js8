@@ -20,8 +20,9 @@
 
 <section class="panel" aria-labelledby={`${id}-title`} data-testid={`panel-${id}`}>
   <header>
-    <span class="redact" aria-hidden="true"></span>
-    <h2 id={`${id}-title`}><span class="code">{code}</span> {title}</h2>
+    <span class="mark" aria-hidden="true"></span>
+    <h2 id={`${id}-title`}>{title}</h2>
+    <span class="code" aria-hidden="true">{code}</span>
     {#if actions}<div class="actions">{@render actions()}</div>{/if}
   </header>
   <div class="body" class:flush>
@@ -36,13 +37,16 @@
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    background: var(--g-glass);
+    background:
+      linear-gradient(160deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.015) 40%),
+      var(--g-glass);
     border: 1px solid var(--g-border);
-    border-radius: var(--g-radius-m);
-    box-shadow: var(--g-inner-glow);
+    border-radius: var(--g-radius-l);
+    box-shadow: var(--g-shadow), var(--g-inner-glow);
     backdrop-filter: blur(var(--g-glass-blur)) saturate(var(--g-glass-saturate));
     -webkit-backdrop-filter: blur(var(--g-glass-blur)) saturate(var(--g-glass-saturate));
     overflow: hidden;
+    isolation: isolate;
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .panel {
@@ -50,45 +54,52 @@
     }
   }
   .panel::before {
-    /* luminous top edge */
+    /* lit edge: brighter along the top, fading down the sides */
     content: '';
     position: absolute;
-    inset: 0 0 auto;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgb(92 225 255 / 0.45), transparent);
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(180deg, var(--g-edge-hi), transparent 35%);
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
   }
   header {
     display: flex;
     align-items: center;
     gap: var(--g-space-2);
-    padding: var(--g-space-2) var(--g-space-3);
-    border-bottom: 1px solid var(--g-border);
-    min-height: 40px;
+    padding: var(--g-space-3) var(--g-space-4);
+    min-height: 52px;
   }
-  .redact {
-    /* redaction-bar motif */
-    width: 22px;
-    height: 10px;
-    background: repeating-linear-gradient(90deg, var(--g-text) 0 3px, transparent 3px 5px);
-    opacity: 0.55;
-    border-radius: 1px;
+  .mark {
+    width: 4px;
+    height: 16px;
+    border-radius: 2px;
+    background: var(--g-accent);
+    box-shadow: 0 0 12px rgb(125 211 252 / 0.55);
     flex: none;
   }
   h2 {
     margin: 0;
-    font-family: var(--g-font-mono);
-    font-size: var(--g-text-xs);
+    font-family: var(--g-font-ui);
+    font-size: var(--g-text-m);
     font-weight: 600;
-    letter-spacing: var(--g-tracking-caps);
-    text-transform: uppercase;
+    letter-spacing: 0.005em;
     color: var(--g-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .code {
-    color: var(--g-chrome);
-    margin-right: var(--g-space-1);
+    font-family: var(--g-font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--g-text-dim);
+    flex: none;
   }
   .actions {
     margin-left: auto;
@@ -97,12 +108,13 @@
     align-items: center;
   }
   .body {
-    padding: var(--g-space-3);
+    padding: 0 var(--g-space-4) var(--g-space-4);
     min-height: 0;
     flex: 1;
     overflow: auto;
   }
   .body.flush {
     padding: 0;
+    border-top: 1px solid var(--g-hairline);
   }
 </style>

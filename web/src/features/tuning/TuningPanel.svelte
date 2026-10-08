@@ -59,13 +59,10 @@
   }
 </script>
 
-<Panel id="tuning" code="TUNE" title="Frequency">
-  <div class="readout" aria-live="polite">
-    <span class="mono freq num" data-testid="dial">{formatMHz(tuning.dial_hz)}</span>
-    <span class="unit">MHz {tuning.mode.toUpperCase()}</span>
+<Panel id="tuning" code="TUNE" title="Tuning">
+  {#snippet actions()}
     {#if bandFor(tuning.dial_hz)}<span class="band mono">{bandFor(tuning.dial_hz)}</span>{/if}
-  </div>
-
+  {/snippet}
   <div class="bands" role="group" aria-label="JS8 band presets">
     {#each JS8_BANDS as b (b.band)}
       <button
@@ -110,7 +107,7 @@
         bind:value={high}
       /></label
     >
-    <button type="submit" class="btn">Apply</button>
+    <button type="submit" class="btn primary">Apply</button>
   </form>
   <p id="tune-help" class="help">
     Tuning is shared by everyone watching this station. JS8 lives at the dial + 0–3 kHz (USB).
@@ -119,45 +116,33 @@
 </Panel>
 
 <style>
-  .readout {
-    display: flex;
-    align-items: baseline;
-    gap: var(--g-space-2);
-    margin-bottom: var(--g-space-3);
-  }
-  .freq {
-    font-size: var(--g-text-xl);
-    color: var(--g-signal);
-    text-shadow: 0 0 12px rgb(61 255 154 / 0.35);
-  }
-  .unit {
-    font-family: var(--g-font-mono);
-    font-size: var(--g-text-xs);
-    color: var(--g-text-muted);
-  }
   .band {
-    margin-left: auto;
-    color: var(--g-chrome);
-    font-size: var(--g-text-s);
+    padding: 2px 8px;
+    border-radius: var(--g-radius-pill);
+    background: var(--g-accent-soft);
+    color: var(--g-text);
+    font-size: var(--g-text-xs);
   }
   .bands {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(3.6rem, 1fr));
-    gap: var(--g-space-1);
-    margin-bottom: var(--g-space-3);
+    grid-template-columns: repeat(auto-fill, minmax(3.4rem, 1fr));
+    gap: 6px;
+    margin-bottom: var(--g-space-4);
   }
   .bands .btn {
-    justify-content: center;
+    min-height: 32px;
     padding: 0;
+    font-family: var(--g-font-mono);
+    font-size: var(--g-text-xs);
+    font-weight: 600;
   }
   .manual {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--g-space-2);
+    gap: var(--g-space-3);
     align-items: end;
-  }
-  .manual .btn {
-    justify-content: center;
+    padding-top: var(--g-space-4);
+    border-top: 1px solid var(--g-hairline);
   }
   .mode {
     border: 0;
@@ -166,11 +151,12 @@
     display: flex;
     gap: var(--g-space-3);
     align-items: center;
+    min-height: 38px;
     font-size: var(--g-text-s);
   }
   .mode legend {
     float: left;
-    margin-right: var(--g-space-2);
+    margin-right: var(--g-space-1);
   }
   .mode label {
     display: inline-flex;
@@ -181,7 +167,7 @@
   .help {
     color: var(--g-text-muted);
     font-size: var(--g-text-xs);
-    margin: var(--g-space-2) 0 0;
+    margin: var(--g-space-3) 0 0;
   }
   .error {
     color: var(--g-alert);

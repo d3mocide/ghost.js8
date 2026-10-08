@@ -82,7 +82,9 @@
 
   <div class="current" data-testid="current-receiver">
     {#if current}
-      <span class="mono host">{current.name ?? current.host}</span>
+      <span class="host"
+        ><span class="live" aria-hidden="true"></span>{current.name ?? current.host}</span
+      >
       <span class="mono muted">{current.host}:{current.port}</span>
       <span class="mono muted" data-testid="watchers"
         >{app.state.session?.subscribers ?? 0} watching</span
@@ -120,7 +122,7 @@
           autocomplete="off"
         /></label
       >
-      <button class="btn" type="submit">Listen</button>
+      <button class="btn primary" type="submit">Listen</button>
     </form>
   </details>
 
@@ -178,14 +180,36 @@
   .current {
     display: grid;
     gap: 2px;
-    margin-bottom: var(--g-space-3);
+    margin-bottom: var(--g-space-4);
+    padding: var(--g-space-3);
+    border-radius: var(--g-radius-m);
+    background: var(--g-glass-raised);
+    border: 1px solid var(--g-hairline);
   }
   .host {
-    color: var(--g-signal);
+    display: flex;
+    align-items: center;
+    gap: var(--g-space-2);
+    font-weight: 600;
+    color: var(--g-text);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .live {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--g-signal);
+    box-shadow:
+      0 0 0 3px rgb(94 234 212 / 0.18),
+      0 0 10px var(--g-signal);
   }
   .muted {
     color: var(--g-text-muted);
-    font-size: var(--g-text-s);
+    font-size: var(--g-text-xs);
   }
   .warn {
     color: var(--g-warn);
@@ -193,36 +217,39 @@
     margin: var(--g-space-2) 0 0;
   }
   .manual {
-    margin-bottom: var(--g-space-3);
+    margin-bottom: var(--g-space-4);
     font-size: var(--g-text-s);
   }
   summary {
     cursor: pointer;
     color: var(--g-chrome);
-    font-family: var(--g-font-mono);
-    font-size: var(--g-text-xs);
-    letter-spacing: var(--g-tracking-caps);
-    text-transform: uppercase;
+    font-size: var(--g-text-s);
+    font-weight: 600;
   }
   form {
     display: grid;
-    gap: var(--g-space-2);
-    margin-top: var(--g-space-2);
+    gap: var(--g-space-3);
+    margin-top: var(--g-space-3);
   }
   .filters {
     display: flex;
-    gap: var(--g-space-3);
+    gap: var(--g-space-4);
     margin-top: var(--g-space-2);
     font-size: var(--g-text-s);
     color: var(--g-text-muted);
   }
+  .filters label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
   .list {
     list-style: none;
-    margin: var(--g-space-3) 0 0;
-    padding: 0;
+    margin: var(--g-space-3) calc(-1 * var(--g-space-2)) 0;
+    padding: 0 var(--g-space-2);
     display: grid;
-    gap: var(--g-space-1);
-    max-height: 22rem;
+    gap: 4px;
+    max-height: 18rem;
     overflow: auto;
   }
   .list li {
@@ -235,16 +262,19 @@
     min-width: 0;
     display: grid;
     text-align: left;
-    gap: 1px;
-    padding: var(--g-space-2);
+    gap: 2px;
+    padding: var(--g-space-2) var(--g-space-3);
     border: 1px solid transparent;
-    border-radius: var(--g-radius-s);
-    background: rgb(255 255 255 / 0.02);
+    border-radius: var(--g-radius-m);
+    background: transparent;
     cursor: pointer;
+    transition:
+      background var(--g-dur-fast) var(--g-ease),
+      border-color var(--g-dur-fast) var(--g-ease);
   }
   .pick:hover:not(:disabled) {
-    border-color: var(--g-border-strong);
-    background: var(--g-chrome-soft);
+    border-color: var(--g-border);
+    background: var(--g-glass-raised);
   }
   .pick:disabled {
     cursor: not-allowed;
@@ -252,6 +282,7 @@
   }
   .name {
     font-size: var(--g-text-s);
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

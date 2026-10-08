@@ -2,8 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { GhostApp } from '../lib/state/app.svelte';
   import { provideApp } from '../lib/state/context';
-  import Logo from '../components/Logo.svelte';
-  import ClassificationBanner from '../features/status/ClassificationBanner.svelte';
+  import TopBar from '../features/status/TopBar.svelte';
   import SituationBar from '../features/status/SituationBar.svelte';
   import StatusPanel from '../features/status/StatusPanel.svelte';
   import ReceiverPanel from '../features/receiver/ReceiverPanel.svelte';
@@ -17,7 +16,6 @@
   import NetLogView from '../features/ghostnet/NetLogView.svelte';
   import FlashAlert from '../features/ghostnet/FlashAlert.svelte';
   import { netIdFromHash } from '../lib/ghostnet';
-  import { formatMHz } from '../lib/format';
 
   let { url }: { url?: string } = $props();
   // svelte-ignore state_referenced_locally
@@ -41,7 +39,6 @@
   let receiverPanel: { focusSearch(): void } | undefined = $state();
 
   const show = (t: Tab): boolean => !phone || tab === t;
-  const session = $derived(app.state.session);
 
   function switchReceiver(): void {
     tab = 'controls';
@@ -77,21 +74,9 @@
   onDestroy(release);
 </script>
 
-<ClassificationBanner />
+<TopBar />
 
 <div class="shell">
-  <header class="masthead">
-    <Logo size={34} />
-    <div class="ident">
-      <span class="sub caps">JS8 listening post · KiwiSDR</span>
-      {#if session?.receiver}
-        <span class="mono rx">
-          {session.receiver.name ?? session.receiver.host} · {formatMHz(session.tuning.dial_hz)} MHz
-        </span>
-      {/if}
-    </div>
-  </header>
-
   <FlashAlert />
   <SituationBar onSwitch={switchReceiver} />
 
@@ -127,9 +112,9 @@
       </div>
       <div class="col side">
         {#if show('ghostnet')}<GhostNetPanel />{/if}
-        {#if show('status')}<StatusPanel />{/if}
         {#if show('stations')}<StationsPanel />{/if}
         {#if show('map')}<MapPanel />{/if}
+        {#if show('status')}<StatusPanel />{/if}
       </div>
     </main>
   {/if}
@@ -143,40 +128,19 @@
   .shell {
     max-width: 1680px;
     margin: 0 auto;
-    padding: var(--g-space-3) var(--g-gutter) var(--g-space-5);
+    padding: var(--g-space-4) var(--g-gutter) var(--g-space-6);
     display: grid;
-    gap: var(--g-space-3);
-  }
-  .masthead {
-    display: flex;
-    align-items: center;
-    gap: var(--g-space-4);
-  }
-  .ident {
-    display: grid;
-    gap: 2px;
-    min-width: 0;
-  }
-  .sub {
-    font-size: var(--g-text-xs);
-    color: var(--g-text-muted);
-  }
-  .rx {
-    font-size: var(--g-text-s);
-    color: var(--g-signal);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    gap: var(--g-gap);
   }
   .grid {
     display: grid;
-    gap: var(--g-space-3);
+    gap: var(--g-gap);
     grid-template-columns: minmax(280px, 340px) minmax(0, 1fr) minmax(300px, 380px);
     align-items: start;
   }
   .col {
     display: grid;
-    gap: var(--g-space-3);
+    gap: var(--g-gap);
     min-width: 0;
   }
   .col:empty {
@@ -199,29 +163,40 @@
   }
   .tabs {
     display: flex;
-    gap: var(--g-space-1);
+    gap: 2px;
     overflow-x: auto;
-    padding-bottom: 2px;
+    padding: 4px;
+    border: 1px solid var(--g-border);
+    border-radius: var(--g-radius-pill);
+    background: var(--g-glass);
+    backdrop-filter: blur(var(--g-glass-blur)) saturate(var(--g-glass-saturate));
+    -webkit-backdrop-filter: blur(var(--g-glass-blur)) saturate(var(--g-glass-saturate));
+    scrollbar-width: none;
   }
   .tab {
     flex: none;
-    padding: var(--g-space-2) var(--g-space-3);
-    border: 1px solid var(--g-border);
-    border-radius: var(--g-radius-s);
-    background: var(--g-glass);
-    font-family: var(--g-font-mono);
-    font-size: var(--g-text-xs);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    min-height: 34px;
+    padding: 0 var(--g-space-3);
+    border: 0;
+    border-radius: var(--g-radius-pill);
+    background: transparent;
+    color: var(--g-text-muted);
+    font-size: var(--g-text-s);
+    font-weight: 600;
     cursor: pointer;
+    transition:
+      background var(--g-dur-fast) var(--g-ease),
+      color var(--g-dur-fast) var(--g-ease);
   }
   .tab[aria-current='page'] {
-    border-color: var(--g-signal);
-    color: var(--g-signal);
+    background: var(--g-accent);
+    color: #0a0c18;
+    box-shadow: 0 6px 18px -8px rgb(125 211 252 / 0.8);
   }
   .foot {
     font-size: var(--g-text-xs);
     color: var(--g-text-dim);
     text-align: center;
+    padding-top: var(--g-space-3);
   }
 </style>

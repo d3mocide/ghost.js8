@@ -19,18 +19,20 @@
   .pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.4em;
-    padding: 2px 8px;
+    gap: 0.45em;
+    padding: 3px 10px 3px 8px;
     border-radius: 999px;
-    border: 1px solid currentColor;
+    border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
     font-family: var(--g-font-mono);
-    font-size: var(--g-text-xs);
+    font-size: 10.5px;
+    font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     white-space: nowrap;
   }
   .icon {
-    font-size: 0.8em;
+    font-size: 0.75em;
+    filter: drop-shadow(0 0 4px currentColor);
   }
   .ok {
     color: var(--g-signal);
@@ -50,5 +52,6 @@
   }
   .unknown {
     color: var(--g-text-muted);
+    background: rgb(255 255 255 / 0.04);
   }
 </style>
