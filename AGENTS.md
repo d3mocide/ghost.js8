@@ -32,7 +32,8 @@ KiwiSDR ─ SND ─→ bridge ─→ decoder-agent ─→ PulseAudio null sink �
 | `web/src/features/` | Svelte panels: receiver, tuning, audio, waterfall, timeline, stations, map, status |
 | `web/src/styles/tokens.css` | Design tokens: the single source for colour, glass, radii, spacing, type, motion |
 | `web/deploy/` | nginx template for the `web` image |
-| `tools/dev-stack.sh` | fake KiwiSDR + fake decoder-agent + real bridge, no Docker |
+| `tools/dev-stack.sh` | fake KiwiSDR + fake decoder-agent + real bridge, no Docker (`GHOSTNET=1 SEED_NET=1` for the autopilot + a seeded recording) |
+| `bridge/src/ghostjs8/ghostnet/` | GhostNet autopilot: `schedule` (plan v1.5 windows), `picker` (nearest receiver), `recorder` (FLAC + waterfall PNG), `pilot` ([`docs/ghostnet.md`](docs/ghostnet.md)) |
 | `decoder/` | Decoder container: Dockerfile, supervisor config, PulseAudio config, JS8Call ini template |
 | `tools/fake-kiwi/` | Simulated KiwiSDR server using real SND/W/F framing |
 | `tools/fixtures/` | Fetch + verify script for the GPL-3.0 upstream test recording (never vendored) |
@@ -128,6 +129,17 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
   bridge-side audio buffering small.
 - `uv` caches builds: if the editable install looks empty after creating new
   package dirs, run `uv sync --reinstall-package ghostjs8`.
+- GhostNet windows are UTC and live in `ghostnet/schedule.py` `PLAN`. A window in
+  progress beats the next window's pre-roll. Any viewer tune/select/disconnect
+  calls `station.operator_changed()`, which pauses the autopilot. Keep that hook
+  on new control paths.
+- The GhostNet distribution's ALE codeplug and HFN CSV are ALE, not JS8; don't
+  import them.
+- `soundfile` ships libsndfile in its manylinux wheel; the bridge image needs no
+  system package for FLAC.
+- axe flags scrollable lists with no focusable children
+  (`scrollable-region-focusable`). It only shows up once a list overflows, as
+  in the full e2e run, so give such lists `tabindex="0"` and a label.
 - TypeScript is pinned to 6.0.x because typescript-eslint does not yet support 7.
 
 ## Conventions

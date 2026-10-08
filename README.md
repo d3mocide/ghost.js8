@@ -27,6 +27,10 @@ MVP complete:
 - **The UI** has receiver directory and manual entry, JS8 band presets,
   waterfall, audio monitor, traffic timeline, heard stations, a map and status.
   It works on desktop, tablet and phone.
+- **GhostNet autopilot (optional).** It follows your region's GhostNet JS8 nets
+  and data bridges on the nearest public KiwiSDR and records each window
+  (traffic, waterfall, audio) for later review. It also raises an alert on
+  live @GSTFLASH traffic. See [`docs/ghostnet.md`](docs/ghostnet.md).
 
 ## Quick start
 
@@ -48,6 +52,7 @@ must be NTP-synced; JS8 decoding depends on it.
 | [`docs/protocol.md`](docs/protocol.md) | bridge ↔ browser protocol, binary layouts |
 | [`docs/kiwisdr-notes.md`](docs/kiwisdr-notes.md) | KiwiSDR framing, pairing, byte order, etiquette |
 | [`docs/decoder-container.md`](docs/decoder-container.md) | JS8Call headless, PulseAudio routing, UDP API |
+| [`docs/ghostnet.md`](docs/ghostnet.md) | GhostNet autopilot: schedule, receiver choice, recordings |
 | [`docs/operations.md`](docs/operations.md) | deploy, health, troubleshooting, manual checklist |
 | [`docs/SECURITY-UPDATES.md`](docs/SECURITY-UPDATES.md) | pinning and update process |
 | [`AGENTS.md`](AGENTS.md) | contributor/agent handoff: commands, invariants, gotchas |

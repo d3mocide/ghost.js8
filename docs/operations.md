@@ -45,6 +45,15 @@ compose projects (`docker compose -p ghostjs8-40m ...`, each with its own
 `.env` and port). An in-bridge pool of decoder slots is a planned follow-up
 (see `architecture.md`).
 
+### GhostNet autopilot
+
+To monitor and record the GhostNet JS8 windows unattended, set
+`GHOSTJS8_GHOSTNET=on`, `GHOSTJS8_GHOSTNET_REGION` and `GHOSTJS8_HOME_GRID`. See
+[`ghostnet.md`](ghostnet.md). Recordings go to the `bridge-data` volume
+(`/data/nets`) and are pruned after `GHOSTJS8_NET_RETENTION_DAYS`. Budget about
+50 MB per recorded hour with audio on. A viewer who tunes or switches receivers
+pauses the autopilot until the window ends.
+
 ## Health
 
 `GET /readyz` returns the same health document the UI shows (200 only when

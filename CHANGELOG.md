@@ -19,3 +19,9 @@ First MVP.
 - Web: Svelte 5 listening-post UI with waterfall, AudioWorklet monitor,
   timeline, stations, map and status; responsive and accessible.
 - Real-recording acceptance test, Playwright smoke tests, CI.
+- GhostNet autopilot (opt-in): follows the GhostNet v1.5 JS8 windows for a region
+  on the nearest suitable public KiwiSDR, parks on 7.107 MHz between windows,
+  and records traffic, a waterfall image and FLAC audio per window. It steps
+  aside when a viewer takes control.
+- Net log viewer (`#/net/<id>`) with click-to-seek audio, and a live
+  @GSTFLASH alert banner. Timeline tags for FLASH/GN/DIR traffic.

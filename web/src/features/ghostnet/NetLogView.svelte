@@ -282,6 +282,9 @@
     right: 6px;
     transform: translateY(-50%);
   }
+  .tticks span:first-child {
+    transform: none; /* +0m sits at the top edge; don't clip it */
+  }
   .wf-img {
     padding: 0;
     border: 0;
