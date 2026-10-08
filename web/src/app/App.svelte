@@ -122,7 +122,7 @@
   {/if}
 
   <footer class="foot mono">
-    ghost.js8 · receive-only · decodes by native JS8Call · build {app.state.hello?.build ?? '—'}
+    ghost.js8 · JS8 ops console · decodes by native JS8Call · build {app.state.hello?.build ?? '—'}
   </footer>
 </div>
 

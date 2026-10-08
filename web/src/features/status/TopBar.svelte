@@ -20,7 +20,7 @@
 <div class="topbar" role="banner">
   <div class="inner">
     <a class="brand" href="#/" aria-label="ghost.js8 home"><Logo size={38} /></a>
-    <span class="tagline">JS8 listening post</span>
+    <span class="tagline">JS8 ops console</span>
     <span class="spacer"></span>
     <button
       type="button"
@@ -38,17 +38,17 @@
       >
       <span class="sr-only">Animated backdrop</span>
     </button>
-    <span class="rx-only" title="ghost.js8 cannot transmit">
-      <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"
-        ><path
-          d="M12 3 4 6v6c0 4.4 3.4 8.3 8 9 4.6-.7 8-4.6 8-9V6z"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.2"
-          stroke-linejoin="round"
-        /></svg
-      >
-      Receive only
+    <!--
+      Capability, not brand. The contract's hello has receive_only: true for every
+      build today; a future transmit extension changes the contract and this chip.
+    -->
+    <span
+      class="mode"
+      data-testid="mode-chip"
+      title="Receive mode: this build has no transmit path"
+    >
+      <span class="sr-only">Mode:</span>
+      <span class="led" aria-hidden="true"></span>RX
     </span>
     <span class="link {link}" data-testid="link-state">
       <span class="dot" aria-hidden="true"></span>
@@ -118,17 +118,25 @@
   .fx:hover {
     border-color: var(--g-border-strong);
   }
-  .rx-only {
+  .mode {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
+    padding: 3px 10px;
     border-radius: var(--g-radius-pill);
+    border: 1px solid rgb(94 234 212 / 0.3);
     background: var(--g-signal-soft);
     color: var(--g-signal);
-    font-size: var(--g-text-xs);
-    font-weight: 600;
-    letter-spacing: 0.04em;
+    font-family: var(--g-font-display);
+    font-size: var(--g-text-s);
+    letter-spacing: 0.14em;
+  }
+  .led {
+    width: 6px;
+    height: 6px;
+    border-radius: 1px;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
   }
   .link {
     display: inline-flex;
@@ -176,7 +184,7 @@
     }
   }
   @media (max-width: 720px) {
-    .rx-only,
+    .mode,
     .link .label {
       display: none;
     }

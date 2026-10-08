@@ -34,5 +34,8 @@ First MVP.
 - New mark and wordmark: a stencil line-art ghost with a radio-wave hem and
   slit eyes, and `ghost.js8_` set in Share Tech Mono with a blinking cursor.
   Panel titles and the frequency readout use the same terminal face.
+- Mode-neutral branding: tagline "JS8 ops console". The "Receive only"
+  badge became an `RX` mode chip that shows capability, not brand. A future
+  transmit extension changes the chip, not the name.
 - Net log viewer (`#/net/<id>`) with click-to-seek audio, and a live
   @GSTFLASH alert banner. Timeline tags for FLASH/GN/DIR traffic.

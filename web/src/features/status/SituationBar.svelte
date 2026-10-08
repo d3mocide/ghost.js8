@@ -21,7 +21,7 @@
   const lastDecode = $derived(app.state.health?.last_decode_utc ?? null);
 </script>
 
-<section class="hero {s.tone}" aria-label="Listening post overview">
+<section class="hero {s.tone}" aria-label="Station overview">
   <div class="tuned">
     <span class="label">Listening on</span>
     <div class="freq-row">

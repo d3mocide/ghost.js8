@@ -1,7 +1,8 @@
 # Architecture
 
-ghost.js8 is a receive-only JS8Call listening post. It pulls audio and waterfall
-data from public KiwiSDR web receivers, decodes JS8 with the **native JS8Call
+ghost.js8 is a JS8 ops console. Current builds are receive-only (see the TX
+extension point in `operations.md`). It pulls audio and waterfall data from
+public KiwiSDR web receivers, decodes JS8 with the **native JS8Call
 application** running headless in Docker, and presents traffic in a browser.
 
 ## Components

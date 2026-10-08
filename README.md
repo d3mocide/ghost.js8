@@ -1,15 +1,15 @@
 <p align="center">
-  <img src="docs/assets/banner.webp" alt="ghost.js8 — receive only, JS8 listening post" width="100%">
+  <img src="docs/assets/banner.webp" alt="ghost.js8 — JS8 ops console for KiwiSDR and GhostNet" width="100%">
 </p>
 
 <p align="center">
-  <b>Passive JS8 listening through public KiwiSDR receivers.</b><br>
-  The native JS8Call decoder, headless in Docker, behind a browser listening post. It never transmits.
+  <b>A JS8 ops console in the browser.</b><br>
+  The native JS8Call decoder, headless in Docker, wired to public KiwiSDR receivers and GhostNet.
 </p>
 
 <p align="center">
   <a href="https://github.com/d3mocide/ghost.js8/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/d3mocide/ghost.js8/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Receive only" src="https://img.shields.io/badge/mode-receive_only-5eead4?labelColor=0a0c1f">
+  <img alt="Mode RX" src="https://img.shields.io/badge/mode-RX-5eead4?labelColor=0a0c1f">
   <img alt="License GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-a78bfa?labelColor=0a0c1f">
 </p>
 
@@ -20,10 +20,11 @@
 ## What it does
 
 - **Real decoding.** KiwiSDR audio goes into native JS8Call. CI proves it end to end with a real recording.
-- **Live listening post.** Waterfall, decoded traffic, heard stations, map and an audio monitor work on desktop and phone.
+- **Live console.** Waterfall, decoded traffic, heard stations, map and an audio monitor work on desktop and phone.
 - **GhostNet autopilot (opt-in).** It follows your region's GhostNet JS8 nets on the nearest KiwiSDR. Each net is recorded (traffic, waterfall, audio) for later review. Live `@GSTFLASH` traffic raises an alert.
 - **Truthful health.** Every component reports timestamped evidence. "Connected" is never mistaken for "decoding".
-- **Polite and passive.** It identifies itself, backs off on reconnect and never touches shared receiver settings. Nothing can transmit.
+- **Polite on shared receivers.** It identifies itself, backs off on reconnect and never touches shared receiver settings.
+- **RX today, built to grow.** Current builds have no transmit path (the UI shows an `RX` mode chip). Transmit is planned as a separate, explicitly enabled extension with proper radio tooling.
 
 ```
 KiwiSDR ─ SND ─▶ bridge ─▶ decoder-agent ─▶ PulseAudio ─▶ JS8Call (native, headless)

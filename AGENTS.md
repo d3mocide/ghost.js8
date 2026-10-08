@@ -67,7 +67,9 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
 
 1. **Receive only.** No transmit button, TX field, or anything that looks like it
    could send. A Playwright test asserts this. A future radio interface must be a
-   separate, explicit extension point.
+   separate, explicit extension point. Branding stays mode-neutral ("JS8 ops
+   console"); current capability is shown by the top bar's `RX` chip, which
+   tracks the contract's `hello.receive_only`.
 2. **Never change shared receiver hardware settings.** No attenuation changes,
    ever. Kiwi AGC is per-channel DSP; we send fixed per-channel defaults only.
    ADC overload is shown and receiver switching is offered — nothing else.

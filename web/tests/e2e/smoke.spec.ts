@@ -5,6 +5,7 @@ test.describe('ghost.js8 smoke', () => {
   test('establishes the link and shows live traffic', async ({ page, isMobile }) => {
     await page.goto('/');
     await expect(page.getByTestId('link-state')).toContainText('LINK ESTABLISHED');
+    await expect(page.getByTestId('mode-chip')).toHaveText(/\bRX\b/);
     await expect(page.getByTestId('decode-row').first()).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId('situation')).toHaveAttribute(
       'data-code',
