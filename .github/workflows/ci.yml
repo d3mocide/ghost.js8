@@ -27,7 +27,7 @@ jobs:
         with:
           version: "0.11.32"
           enable-cache: true
-      - run: uv sync --locked
+      - run: uv sync --locked --all-extras
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy
@@ -62,7 +62,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Build (verifies JS8Call SHA-256)
-        run: docker build -t ghostjs8-decoder:ci decoder/
+        run: docker build -f decoder/Dockerfile -t ghostjs8-decoder:ci .
       - name: Boot and wait for healthy
         run: |
           docker run -d --name dec ghostjs8-decoder:ci
@@ -71,3 +71,13 @@ jobs:
             echo "health=$s"; [ "$s" = healthy ] && exit 0; sleep 5
           done
           docker logs dec; exit 1
+
+  acceptance:
+    name: acceptance (real recording -> native JS8Call -> browser WebSocket)
+    runs-on: ubuntu-24.04
+    needs: [bridge, decoder-image]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: make acceptance
