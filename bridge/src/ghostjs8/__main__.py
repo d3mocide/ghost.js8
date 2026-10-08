@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import sys
 
 
@@ -11,37 +10,61 @@ def _bridge() -> None:
 
     from ghostjs8.api.app import create_app
     from ghostjs8.api.hub import Hub
+    from ghostjs8.decoders.base import DecoderSink
     from ghostjs8.decoders.js8call_native.adapter import Js8CallNativeDecoder
-    from ghostjs8.receivers.base import ReceiverSink
+    from ghostjs8.receivers.base import ReceiverSink, Tuning
     from ghostjs8.receivers.kiwisdr.client import KiwiEndpoint, KiwiReceiver
-    from ghostjs8.session.station import ReceiverFactory, ReceiverHandle, Station
+    from ghostjs8.session.station import (
+        DecoderHandle,
+        ReceiverHandle,
+        ReceiverTarget,
+        Station,
+        StationConfig,
+    )
     from ghostjs8.settings import Settings
+    from ghostjs8.store.sqlite import Store
+    from ghostjs8.util.clock import SystemClock
+    from ghostjs8.util.logs import configure
 
     settings = Settings.from_env()
-    logging.basicConfig(
-        level=settings.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s"
-    )
-    receiver_factory: ReceiverFactory | None = None
-    if settings.receiver_host:
-        endpoint = KiwiEndpoint(
-            settings.receiver_host, settings.receiver_port, settings.receiver_password
+    configure("bridge", settings.log_level, settings.log_format)
+    clock = SystemClock()
+
+    def make_receiver(target: ReceiverTarget, tuning: Tuning, sink: ReceiverSink) -> ReceiverHandle:
+        return KiwiReceiver(
+            KiwiEndpoint(target.host, target.port, target.password), tuning, sink, clock=clock
         )
 
-        def make_receiver(sink: ReceiverSink) -> ReceiverHandle:
-            return KiwiReceiver(endpoint, settings.tuning, sink)
+    def make_decoder(sink: DecoderSink) -> DecoderHandle:
+        return Js8CallNativeDecoder(settings.agent_url, sink, clock=clock)
 
-        receiver_factory = make_receiver
-
+    target = (
+        ReceiverTarget(settings.receiver_host, settings.receiver_port, settings.receiver_password)
+        if settings.receiver_host
+        else None
+    )
     station = Station(
         Hub(max_clients=settings.max_clients),
-        lambda sink: Js8CallNativeDecoder(settings.agent_url, sink),
-        receiver_factory,
+        make_decoder,
+        make_receiver,
+        tuning=settings.tuning,
+        target=target,
+        store=Store(settings.db_path, clock, retention_days=settings.retention_days)
+        if settings.db_path
+        else None,
+        clock=clock,
+        config=StationConfig(
+            waterfall_max_fps=settings.waterfall_max_fps,
+            idle_disconnect_s=settings.idle_disconnect_minutes * 60.0,
+        ),
     )
     uvicorn.run(
-        create_app(station, settings),
+        create_app(station, settings, clock=clock),
         host=settings.listen_host,
         port=settings.listen_port,
-        log_level=settings.log_level.lower(),
+        log_config=None,
+        access_log=False,
+        ws_max_size=64 * 1024,
     )
 
 

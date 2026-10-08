@@ -32,6 +32,7 @@ from ghostjs8.decoders.base import DecoderHealth
 from ghostjs8.decoders.js8call_native import agent_protocol as proto
 from ghostjs8.decoders.js8call_native.messages import FORWARDED_TYPES
 from ghostjs8.util.clock import Clock, SystemClock
+from ghostjs8.util.logs import configure
 
 log = logging.getLogger("ghostjs8.agent")
 
@@ -333,7 +334,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--port", type=int, default=proto.DEFAULT_AGENT_PORT)
     p.add_argument("--udp-port", type=int, default=2242)
     args = p.parse_args(argv)
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    configure("decoder-agent")
     asyncio.run(Agent(udp_port=args.udp_port).serve(args.host, args.port))
 
 

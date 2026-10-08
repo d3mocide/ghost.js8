@@ -27,6 +27,13 @@ class Settings:
     receiver_password: str = ""
     tuning: Tuning = field(default_factory=lambda: Tuning(dial_hz=14_078_000))
     log_level: str = "INFO"
+    log_format: str = "json"  # json | text
+    db_path: str = "/data/ghostjs8.sqlite3"  # empty: no persistence
+    retention_days: int = 30
+    idle_disconnect_minutes: int = 0  # 0 = keep listening with nobody watching
+    waterfall_max_fps: float = 10.0
+    allow_private_receivers: bool = True  # LAN Kiwis are common; loopback/link-local always refused
+    directory_url: str = "http://rx.linkfanel.net/kiwisdr_com.js"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -54,4 +61,12 @@ class Settings:
                 high_cut_hz=_int(e, "GHOSTJS8_HIGH_CUT_HZ", 3000),
             ),
             log_level=e.get("GHOSTJS8_LOG_LEVEL", "INFO").upper(),
+            log_format=e.get("GHOSTJS8_LOG_FORMAT", "json").lower(),
+            db_path=e.get("GHOSTJS8_DB_PATH", cls.db_path),
+            retention_days=_int(e, "GHOSTJS8_RETENTION_DAYS", 30),
+            idle_disconnect_minutes=_int(e, "GHOSTJS8_IDLE_DISCONNECT_MINUTES", 0),
+            waterfall_max_fps=float(e.get("GHOSTJS8_WATERFALL_MAX_FPS", "10") or 10),
+            allow_private_receivers=e.get("GHOSTJS8_ALLOW_PRIVATE_RECEIVERS", "true").lower()
+            in ("1", "true", "yes"),
+            directory_url=e.get("GHOSTJS8_DIRECTORY_URL", cls.directory_url),
         )

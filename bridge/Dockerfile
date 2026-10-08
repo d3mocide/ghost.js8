@@ -21,10 +21,12 @@ FROM ${PYTHON_IMAGE} AS runtime
 LABEL org.opencontainers.image.title="ghost.js8 bridge" \
       org.opencontainers.image.source="https://github.com/d3mocide/ghost.js8" \
       org.opencontainers.image.licenses="GPL-3.0-or-later"
-RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin ghost
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin ghost \
+ && install -d -o ghost -g ghost -m 0750 /data
 COPY --from=build /opt/venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH PYTHONUNBUFFERED=1
 USER ghost
+VOLUME /data
 EXPOSE 8073
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
   CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8073/healthz', timeout=2).status == 200 else 1)"]
