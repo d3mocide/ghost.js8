@@ -6,7 +6,7 @@ SHELL := /bin/bash
 UV  := uv --directory bridge
 NPM := npm --prefix web
 
-.PHONY: setup lint typecheck test check contract contract-check acceptance decoder-image fixtures
+.PHONY: setup lint typecheck test check contract contract-check acceptance decoder-image fixtures e2e images up down
 
 setup:
 	$(UV) sync --locked --all-extras
@@ -50,3 +50,15 @@ DOCKER_SECRET := $(if $(EXTRA_CA),--secret id=extra_ca$(comma)src=$(EXTRA_CA),)
 
 decoder-image:
 	docker build $(DOCKER_SECRET) -f decoder/Dockerfile -t ghostjs8-decoder:dev .
+
+e2e:
+	cd web && npx playwright test
+
+images:
+	COMPOSE_BAKE=false EXTRA_CA=$(EXTRA_CA) docker compose build
+
+up:
+	COMPOSE_BAKE=false docker compose up -d
+
+down:
+	docker compose down
