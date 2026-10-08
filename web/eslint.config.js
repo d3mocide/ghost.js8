@@ -29,5 +29,9 @@ export default ts.config(
       '@typescript-eslint/explicit-module-boundary-types': 'error',
     },
   },
-  { files: ['*.config.js', '*.config.ts'], ...ts.configs.disableTypeChecked },
+  { files: ['*.config.js', '*.config.ts', 'scripts/**/*.mjs'], ...ts.configs.disableTypeChecked },
+  {
+    files: ['*.config.js', '*.config.ts', 'scripts/**/*.mjs'],
+    languageOptions: { globals: { ...globals.node } },
+  },
 );

@@ -1,0 +1,1096 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/d3mocide/ghost.js8/contract/schema.json",
+  "title": "GhostJs8Protocol",
+  "description": "ghost.js8 bridge <-> browser protocol v1. Generated; do not edit.",
+  "type": "object",
+  "properties": {
+    "server": {
+      "$ref": "#/$defs/ServerMessage"
+    },
+    "client": {
+      "$ref": "#/$defs/ClientMessage"
+    }
+  },
+  "$defs": {
+    "ClientHello": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "hello",
+          "default": "hello",
+          "type": "string"
+        },
+        "client": {
+          "default": "web",
+          "maxLength": 64,
+          "type": "string"
+        }
+      },
+      "title": "ClientHello",
+      "type": "object",
+      "required": [
+        "client",
+        "type",
+        "v"
+      ]
+    },
+    "ClientMessage": {
+      "discriminator": {
+        "mapping": {
+          "disconnect_receiver": "#/$defs/DisconnectReceiver",
+          "hello": "#/$defs/ClientHello",
+          "ping": "#/$defs/Ping",
+          "select_receiver": "#/$defs/SelectReceiver",
+          "subscribe": "#/$defs/Subscribe",
+          "tune": "#/$defs/Tune"
+        },
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ClientHello"
+        },
+        {
+          "$ref": "#/$defs/Tune"
+        },
+        {
+          "$ref": "#/$defs/SelectReceiver"
+        },
+        {
+          "$ref": "#/$defs/DisconnectReceiver"
+        },
+        {
+          "$ref": "#/$defs/Subscribe"
+        },
+        {
+          "$ref": "#/$defs/Ping"
+        }
+      ],
+      "title": "ClientMessage"
+    },
+    "Component": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "enum": [
+            "ok",
+            "degraded",
+            "down",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "since": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "last_seen": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "detail": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "detail",
+        "last_seen",
+        "since",
+        "state"
+      ],
+      "title": "Component",
+      "type": "object"
+    },
+    "Components": {
+      "additionalProperties": false,
+      "properties": {
+        "bridge": {
+          "$ref": "#/$defs/Component"
+        },
+        "decoder_process": {
+          "$ref": "#/$defs/Component"
+        },
+        "decoder_api": {
+          "$ref": "#/$defs/Component"
+        },
+        "decoder_capture": {
+          "$ref": "#/$defs/Component"
+        },
+        "receiver": {
+          "$ref": "#/$defs/Component"
+        },
+        "audio": {
+          "$ref": "#/$defs/Component"
+        },
+        "waterfall": {
+          "$ref": "#/$defs/Component"
+        }
+      },
+      "required": [
+        "audio",
+        "bridge",
+        "decoder_api",
+        "decoder_capture",
+        "decoder_process",
+        "receiver",
+        "waterfall"
+      ],
+      "title": "Components",
+      "type": "object"
+    },
+    "Decode": {
+      "additionalProperties": false,
+      "description": "One decoded JS8 transmission. ``utc`` comes from the decoder, never inferred.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "decode",
+          "default": "decode",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "activity",
+            "directed"
+          ],
+          "type": "string"
+        },
+        "utc": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "snr_db": {
+          "type": "integer"
+        },
+        "offset_hz": {
+          "type": "integer"
+        },
+        "dial_hz": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "freq_hz": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "speed": {
+          "type": "string"
+        },
+        "from_call": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "to_call": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "grid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "dial_hz",
+        "freq_hz",
+        "from_call",
+        "grid",
+        "kind",
+        "offset_hz",
+        "snr_db",
+        "speed",
+        "text",
+        "to_call",
+        "type",
+        "utc",
+        "v"
+      ],
+      "title": "Decode",
+      "type": "object"
+    },
+    "DisconnectReceiver": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "disconnect_receiver",
+          "default": "disconnect_receiver",
+          "type": "string"
+        }
+      },
+      "title": "DisconnectReceiver",
+      "type": "object",
+      "required": [
+        "type",
+        "v"
+      ]
+    },
+    "Error": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "error",
+          "default": "error",
+          "type": "string"
+        },
+        "code": {
+          "enum": [
+            "bad_message",
+            "unsupported_version",
+            "session_full",
+            "invalid_tuning",
+            "invalid_receiver",
+            "rate_limited",
+            "internal"
+          ],
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "type",
+        "v"
+      ],
+      "title": "Error",
+      "type": "object"
+    },
+    "Health": {
+      "additionalProperties": false,
+      "description": "Truthful readiness: distinct components, each with evidence timestamps.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "health",
+          "default": "health",
+          "type": "string"
+        },
+        "utc": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "overall": {
+          "enum": [
+            "listening",
+            "degraded",
+            "offline"
+          ],
+          "type": "string"
+        },
+        "components": {
+          "$ref": "#/$defs/Components"
+        },
+        "last_decode_utc": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "components",
+        "last_decode_utc",
+        "overall",
+        "type",
+        "utc",
+        "v"
+      ],
+      "title": "Health",
+      "type": "object"
+    },
+    "Hello": {
+      "additionalProperties": false,
+      "description": "First message on every connection.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "hello",
+          "default": "hello",
+          "type": "string"
+        },
+        "server": {
+          "default": "ghost.js8",
+          "type": "string"
+        },
+        "build": {
+          "type": "string"
+        },
+        "receive_only": {
+          "const": true,
+          "default": true,
+          "type": "boolean"
+        },
+        "limits": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Limits"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "build",
+        "limits",
+        "receive_only",
+        "server",
+        "type",
+        "v"
+      ],
+      "title": "Hello",
+      "type": "object"
+    },
+    "History": {
+      "additionalProperties": false,
+      "description": "Sent once after hello: recent traffic from the store, oldest first.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "history",
+          "default": "history",
+          "type": "string"
+        },
+        "decodes": {
+          "items": {
+            "$ref": "#/$defs/Decode"
+          },
+          "type": "array"
+        },
+        "stations": {
+          "items": {
+            "$ref": "#/$defs/Station"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "decodes",
+        "stations",
+        "type",
+        "v"
+      ],
+      "title": "History",
+      "type": "object"
+    },
+    "Limits": {
+      "additionalProperties": false,
+      "properties": {
+        "max_clients": {
+          "type": "integer"
+        },
+        "audio_sample_rate": {
+          "type": "integer"
+        },
+        "waterfall_max_fps": {
+          "type": "number"
+        },
+        "waterfall_bins": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "audio_sample_rate",
+        "max_clients",
+        "waterfall_bins",
+        "waterfall_max_fps"
+      ],
+      "title": "Limits",
+      "type": "object"
+    },
+    "Ping": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "ping",
+          "default": "ping",
+          "type": "string"
+        }
+      },
+      "title": "Ping",
+      "type": "object",
+      "required": [
+        "type",
+        "v"
+      ]
+    },
+    "Pong": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "pong",
+          "default": "pong",
+          "type": "string"
+        },
+        "utc": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "utc",
+        "v"
+      ],
+      "title": "Pong",
+      "type": "object"
+    },
+    "ReceiverDirectory": {
+      "additionalProperties": false,
+      "properties": {
+        "fetched_utc": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string"
+        },
+        "receivers": {
+          "items": {
+            "$ref": "#/$defs/ReceiverListing"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "fetched_utc",
+        "receivers",
+        "source",
+        "stale"
+      ],
+      "title": "ReceiverDirectory",
+      "type": "object"
+    },
+    "ReceiverListing": {
+      "additionalProperties": false,
+      "description": "One public receiver from the directory (GET /api/receivers).",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "tls": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string"
+        },
+        "grid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lat": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lon": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "users": {
+          "type": "integer"
+        },
+        "users_max": {
+          "type": "integer"
+        },
+        "min_hz": {
+          "type": "integer"
+        },
+        "max_hz": {
+          "type": "integer"
+        },
+        "antenna": {
+          "type": "string"
+        },
+        "snr_db": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "antenna",
+        "grid",
+        "host",
+        "id",
+        "lat",
+        "location",
+        "lon",
+        "max_hz",
+        "min_hz",
+        "name",
+        "port",
+        "snr_db",
+        "tls",
+        "users",
+        "users_max"
+      ],
+      "title": "ReceiverListing",
+      "type": "object"
+    },
+    "ReceiverRef": {
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "maxLength": 253,
+          "minLength": 1,
+          "type": "string"
+        },
+        "port": {
+          "default": 8073,
+          "maximum": 65535,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "host",
+        "name",
+        "port"
+      ],
+      "title": "ReceiverRef",
+      "type": "object"
+    },
+    "ReceiverStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "receiver_status",
+          "default": "receiver_status",
+          "type": "string"
+        },
+        "adc_overload": {
+          "type": "boolean"
+        },
+        "rssi_dbm": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "info": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "adc_overload",
+        "info",
+        "rssi_dbm",
+        "type",
+        "v"
+      ],
+      "title": "ReceiverStatus",
+      "type": "object"
+    },
+    "SelectReceiver": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "select_receiver",
+          "default": "select_receiver",
+          "type": "string"
+        },
+        "receiver": {
+          "$ref": "#/$defs/ReceiverRef"
+        },
+        "password": {
+          "default": "",
+          "maxLength": 128,
+          "type": "string"
+        }
+      },
+      "required": [
+        "password",
+        "receiver",
+        "type",
+        "v"
+      ],
+      "title": "SelectReceiver",
+      "type": "object"
+    },
+    "ServerMessage": {
+      "discriminator": {
+        "mapping": {
+          "decode": "#/$defs/Decode",
+          "error": "#/$defs/Error",
+          "health": "#/$defs/Health",
+          "hello": "#/$defs/Hello",
+          "history": "#/$defs/History",
+          "pong": "#/$defs/Pong",
+          "receiver_status": "#/$defs/ReceiverStatus",
+          "session": "#/$defs/Session",
+          "station": "#/$defs/Station"
+        },
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Hello"
+        },
+        {
+          "$ref": "#/$defs/Health"
+        },
+        {
+          "$ref": "#/$defs/Session"
+        },
+        {
+          "$ref": "#/$defs/Decode"
+        },
+        {
+          "$ref": "#/$defs/Station"
+        },
+        {
+          "$ref": "#/$defs/History"
+        },
+        {
+          "$ref": "#/$defs/ReceiverStatus"
+        },
+        {
+          "$ref": "#/$defs/Error"
+        },
+        {
+          "$ref": "#/$defs/Pong"
+        }
+      ],
+      "title": "ServerMessage"
+    },
+    "Session": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "session",
+          "default": "session",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "idle",
+            "connecting",
+            "connected",
+            "backoff",
+            "rejected",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "receiver": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReceiverRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tuning": {
+          "$ref": "#/$defs/TuningModel"
+        },
+        "subscribers": {
+          "type": "integer"
+        },
+        "reject_reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "full",
+                "busy",
+                "auth",
+                "down",
+                "redirect",
+                "duplicate_ip"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "detail": {
+          "default": "",
+          "type": "string"
+        },
+        "next_retry_utc": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "detail",
+        "next_retry_utc",
+        "receiver",
+        "reject_reason",
+        "state",
+        "subscribers",
+        "tuning",
+        "type",
+        "v"
+      ],
+      "title": "Session",
+      "type": "object"
+    },
+    "Station": {
+      "additionalProperties": false,
+      "description": "A heard station. ``grid`` is present only when it is a valid Maidenhead locator.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "station",
+          "default": "station",
+          "type": "string"
+        },
+        "callsign": {
+          "type": "string"
+        },
+        "last_heard_utc": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "snr_db": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "grid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "offset_hz": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "dial_hz": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "heard_count": {
+          "default": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "callsign",
+        "dial_hz",
+        "grid",
+        "heard_count",
+        "last_heard_utc",
+        "offset_hz",
+        "snr_db",
+        "type",
+        "v"
+      ],
+      "title": "Station",
+      "type": "object"
+    },
+    "Subscribe": {
+      "additionalProperties": false,
+      "description": "Opt in to binary channels. Both default off: no bytes the viewer does not want.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "subscribe",
+          "default": "subscribe",
+          "type": "string"
+        },
+        "audio": {
+          "default": false,
+          "type": "boolean"
+        },
+        "waterfall": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "title": "Subscribe",
+      "type": "object",
+      "required": [
+        "audio",
+        "type",
+        "v",
+        "waterfall"
+      ]
+    },
+    "Tune": {
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "tune",
+          "default": "tune",
+          "type": "string"
+        },
+        "tuning": {
+          "$ref": "#/$defs/TuningModel"
+        }
+      },
+      "required": [
+        "tuning",
+        "type",
+        "v"
+      ],
+      "title": "Tune",
+      "type": "object"
+    },
+    "TuningModel": {
+      "additionalProperties": false,
+      "properties": {
+        "dial_hz": {
+          "exclusiveMaximum": 100000000,
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "mode": {
+          "default": "usb",
+          "enum": [
+            "usb",
+            "lsb"
+          ],
+          "type": "string"
+        },
+        "low_cut_hz": {
+          "default": 100,
+          "maximum": 6000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "high_cut_hz": {
+          "default": 3000,
+          "maximum": 6000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "dial_hz",
+        "high_cut_hz",
+        "low_cut_hz",
+        "mode"
+      ],
+      "title": "TuningModel",
+      "type": "object"
+    }
+  }
+}

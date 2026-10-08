@@ -28,10 +28,11 @@ test:
 check: lint typecheck test
 
 contract:
-	@echo "contract generation lands in milestone 6" >&2; exit 1
+	$(UV) run python -m ghostjs8.contract.generate ../contract/schema.json
+	cd web && node scripts/gen-protocol.mjs
 
-contract-check:
-	@echo "contract drift check lands in milestone 6" >&2; exit 1
+contract-check: contract
+	git diff --exit-code -- contract/schema.json web/src/lib/protocol/generated.ts
 
 fixtures:
 	python3 tools/fixtures/fetch_fixture.py
