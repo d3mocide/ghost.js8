@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+web/dist/
+web/test-results/
+web/playwright-report/
+
+# Fixtures are fetched + verified, never committed
+tools/fixtures/cache/
+
+# Local env
+.env
+*.sqlite3
+*.sqlite3-*
