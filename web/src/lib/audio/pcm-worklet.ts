@@ -15,8 +15,13 @@ interface AudioWorkletProcessorLike {
 export const PROCESSOR_NAME = 'ghost-pcm';
 
 class GhostPcmProcessor extends AudioWorkletProcessor implements AudioWorkletProcessorLike {
-  // ~1 s ceiling, ~250 ms prebuffer: enough for network jitter, never a growing backlog.
-  private readonly ring = new PcmRing(Math.round(sampleRate), Math.round(sampleRate / 4));
+  // ~250 ms prebuffer for network jitter; backlog capped at ~500 ms (resync beyond it),
+  // so a start-up burst cannot leave the monitor a second behind the live signal.
+  private readonly ring = new PcmRing(
+    Math.round(sampleRate),
+    Math.round(sampleRate / 4),
+    Math.round(sampleRate / 2),
+  );
   private frames = 0;
 
   constructor() {

@@ -28,7 +28,9 @@ export class WaterfallRenderer {
   resize(cssWidth: number, cssHeight: number, dpr: number): void {
     const w = Math.max(1, Math.round(cssWidth * dpr));
     const h = Math.max(1, Math.round(cssHeight * dpr));
-    if (w === this.canvas.width && h === this.canvas.height) return;
+    // Skip only when the backing store is already sized and the row buffer exists;
+    // a renderer rebuilt on an unchanged canvas still needs its row allocated.
+    if (w === this.canvas.width && h === this.canvas.height && this.row) return;
     this.canvas.width = w;
     this.canvas.height = h;
     this.rowHeight = Math.max(1, Math.round(dpr));

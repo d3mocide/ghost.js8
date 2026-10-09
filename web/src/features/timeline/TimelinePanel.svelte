@@ -88,8 +88,14 @@
     list-style: none;
     margin: 0;
     padding: var(--g-space-1) 0;
+    /* Phone: cap the list so the tab stays short. Wide layouts stretch the panel instead. */
     max-height: clamp(240px, 42vh, 600px);
     overflow: auto;
+  }
+  @media (min-width: 1281px) {
+    .list {
+      max-height: none;
+    }
   }
   .row {
     position: relative;

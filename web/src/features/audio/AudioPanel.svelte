@@ -5,9 +5,11 @@
 
   const app = useApp();
   const fresh = $derived(app.state.lastAudioAt !== null && app.now - app.state.lastAudioAt < 3000);
-  const bufferedMs = $derived(
-    app.audioStats ? Math.round((app.audioStats.buffered / 12_000) * 1000) : null,
-  );
+  // Worklet counters are in samples at 12 kHz; the panel reports time instead.
+  const toMs = (samples: number): number => Math.round((samples / 12_000) * 1000);
+  const bufferedMs = $derived(app.audioStats ? toMs(app.audioStats.buffered) : null);
+  const droppedMs = $derived(app.audioStats ? toMs(app.audioStats.dropped) : null);
+  const silentMs = $derived(app.audioStats ? toMs(app.audioStats.underruns) : null);
 </script>
 
 <Panel id="audio" code="AUD" title="Audio monitor">
@@ -60,7 +62,7 @@
   {#if app.audioError}<p class="error" role="alert">Audio could not start: {app.audioError}</p>{/if}
   {#if app.audioEnabled && app.audioStats}
     <p class="stats mono">
-      buffer {bufferedMs} ms · dropped {app.audioStats.dropped} · gaps {app.audioStats.underruns}
+      latency {bufferedMs} ms · discarded {droppedMs} ms · silence {silentMs} ms
     </p>
   {/if}
   <p class="help">Monitoring only. Volume changes what you hear, not what the decoder receives.</p>

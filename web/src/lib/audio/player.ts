@@ -25,6 +25,11 @@ export class AudioPlayer {
 
   async start(sampleRate = 12_000): Promise<void> {
     if (this.ctx) return;
+    if (!window.isSecureContext) {
+      throw new Error(
+        'Audio needs a secure context: open this page over HTTPS or via http://localhost.',
+      );
+    }
     const ctx = new AudioContext({ sampleRate, latencyHint: 'interactive' });
     try {
       await ctx.audioWorklet.addModule(workletUrl);

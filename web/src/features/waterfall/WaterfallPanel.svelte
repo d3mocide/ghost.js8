@@ -5,6 +5,7 @@
   import { WaterfallRenderer } from '../../lib/waterfall/renderer';
   import { COLORMAPS, type ColormapName } from '../../lib/waterfall/colormap';
   import type { TuningModel } from '../../lib/protocol/generated';
+  import { untrack } from 'svelte';
 
   const app = useApp();
   const STORAGE_KEY = 'ghostjs8.colormap';
@@ -57,26 +58,39 @@
     }
   });
 
+  // One renderer per canvas. The colormap is applied by its own effect below so
+  // that changing it does not rebuild the renderer on the same canvas.
+  let renderer: WaterfallRenderer | undefined;
+
   $effect(() => {
     if (!canvas || !wrap) return;
-    const renderer = new WaterfallRenderer(canvas, colormap);
+    const current = new WaterfallRenderer(
+      canvas,
+      untrack(() => colormap),
+    );
+    renderer = current;
     const target = wrap;
     const resize = (): void => {
       const r = target.getBoundingClientRect();
       width = r.width;
-      renderer.resize(r.width, r.height, window.devicePixelRatio || 1);
+      current.resize(r.width, r.height, window.devicePixelRatio || 1);
     };
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(target);
     const off = app.onWaterfall((frame) => {
-      renderer.setView(view.lo, view.hi);
-      renderer.push(frame);
+      current.setView(view.lo, view.hi);
+      current.push(frame);
     });
     return () => {
       ro.disconnect();
       off(); // unsubscribes the waterfall channel when this view goes away
+      renderer = undefined;
     };
+  });
+
+  $effect(() => {
+    renderer?.setColormap(colormap);
   });
 </script>
 

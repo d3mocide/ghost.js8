@@ -1,7 +1,8 @@
 /**
  * Bounded PCM ring buffer with drop/resync semantics, used inside the
- * AudioWorklet. Latency never grows: overflow drops the oldest samples, and
- * an underrun outputs silence until `prebuffer` samples have accumulated.
+ * AudioWorklet. Latency never grows: once the backlog passes `latencyCap`, the
+ * oldest samples are dropped so the buffer resyncs to the cap. An underrun
+ * outputs silence until `prebuffer` samples have accumulated.
  * Framework-free and allocation-free on the hot path.
  */
 export class PcmRing {
@@ -18,8 +19,11 @@ export class PcmRing {
   constructor(
     readonly capacity: number,
     readonly prebuffer: number,
+    /** Largest backlog kept; the ring drops the oldest audio beyond it. */
+    readonly latencyCap: number = capacity,
   ) {
-    if (prebuffer > capacity) throw new RangeError('prebuffer exceeds capacity');
+    if (prebuffer > latencyCap) throw new RangeError('prebuffer exceeds latency cap');
+    if (latencyCap > capacity) throw new RangeError('latency cap exceeds capacity');
     this.buf = new Float32Array(capacity);
   }
 
@@ -29,11 +33,11 @@ export class PcmRing {
 
   push(samples: Float32Array): void {
     let src = samples;
-    if (src.length > this.capacity) {
-      this.dropped += src.length - this.capacity;
-      src = src.subarray(src.length - this.capacity);
+    if (src.length > this.latencyCap) {
+      this.dropped += src.length - this.latencyCap;
+      src = src.subarray(src.length - this.latencyCap);
     }
-    const overflow = this.count + src.length - this.capacity;
+    const overflow = this.count + src.length - this.latencyCap;
     if (overflow > 0) {
       this.read = (this.read + overflow) % this.capacity;
       this.count -= overflow;

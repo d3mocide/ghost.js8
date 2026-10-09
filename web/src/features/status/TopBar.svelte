@@ -188,5 +188,11 @@
     .link .label {
       display: none;
     }
+    .inner {
+      gap: var(--g-space-2);
+    }
+    .utc {
+      padding: 2px 6px;
+    }
   }
 </style>

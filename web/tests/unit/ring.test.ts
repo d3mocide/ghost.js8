@@ -49,8 +49,20 @@ describe('PcmRing', () => {
     expect(Array.from(out)).toEqual([6, 7, 8, 9]);
   });
 
+  it('caps the backlog below capacity and resyncs to the newest audio', () => {
+    const r = new PcmRing(16, 2, 4);
+    r.push(seq(1, 6));
+    expect(r.available).toBe(4);
+    expect(r.dropped).toBe(2);
+    const out = new Float32Array(4);
+    r.pull(out);
+    expect(Array.from(out)).toEqual([3, 4, 5, 6]);
+  });
+
   it('rejects impossible configuration and clears', () => {
     expect(() => new PcmRing(2, 3)).toThrow(RangeError);
+    expect(() => new PcmRing(4, 3, 2)).toThrow(RangeError);
+    expect(() => new PcmRing(4, 1, 5)).toThrow(RangeError);
     const r = new PcmRing(4, 1);
     r.push(seq(1, 2));
     r.clear();

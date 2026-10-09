@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   GHOST,
+  GHOST_EYES,
   RAMP,
   flicker,
+  ghostTint,
   msToNextSlot,
   rampChar,
   ringChar,
@@ -68,5 +70,18 @@ describe('ascii backdrop helpers', () => {
   it('keeps the ghost sprite rectangular', () => {
     const w = GHOST[0]?.length;
     for (const line of GHOST) expect(line.length).toBe(w);
+  });
+
+  it('draws two eyes in the ghost sprite', () => {
+    const eyes = GHOST.join('')
+      .split('')
+      .filter((ch) => GHOST_EYES.includes(ch));
+    expect(eyes.length).toBe(2);
+  });
+
+  it('tints the ghost from aqua on the left to violet on the right', () => {
+    expect(ghostTint(0, 12)).toEqual([103, 232, 249]);
+    expect(ghostTint(11, 12)).toEqual([167, 139, 250]);
+    expect(ghostTint(0, 1)).toEqual([103, 232, 249]);
   });
 });

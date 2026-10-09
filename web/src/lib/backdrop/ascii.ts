@@ -20,15 +20,13 @@ const STILL_T = 37; // the fixed moment drawn for reduced motion
 const HUE_BUCKETS = 10;
 const ALPHA_BUCKETS = 8;
 
-/** A small ghost, drawn in violet, drifting across now and then. */
-export const GHOST = [
-  '  .-""""-.  ',
-  ' /  o  o  \\ ',
-  '|    __    |',
-  '|          |',
-  '|          |',
-  ' \\/\\/\\/\\/\\/ ',
-];
+/**
+ * A small ghost after the ghost.js8 mark: a rounded head, two triangular eyes
+ * and a scalloped hem. Drawn with an aqua-to-violet gradient, eyes in mint.
+ */
+export const GHOST = ['  .-""-.  ', '/  ◣  ◢  \\', '|        |', '|        |', ' \\/\\/\\/\\/ '];
+/** Glyphs in GHOST drawn as eyes rather than body. */
+export const GHOST_EYES = '◣◢';
 
 // ---------------------------------------------------------------- pure helpers
 
@@ -130,6 +128,18 @@ const MINT: readonly [number, number, number] = [94, 234, 212];
 
 function rgba(c: readonly [number, number, number], a: number): string {
   return `rgba(${String(c[0])},${String(c[1])},${String(c[2])},${a.toFixed(3)})`;
+}
+
+/** Ghost body colour at column `col` of a `width`-wide sprite: aqua on the left, violet on the right. */
+export function ghostTint(col: number, width: number): [number, number, number] {
+  const f = width <= 1 ? 0 : Math.max(0, Math.min(1, col / (width - 1)));
+  const [ar, ag, ab] = AQUA;
+  const [vr, vg, vb] = VIOLET;
+  return [
+    Math.round(ar + (vr - ar) * f),
+    Math.round(ag + (vg - ag) * f),
+    Math.round(ab + (vb - ab) * f),
+  ];
 }
 
 /** Precomputed fill styles: [hue bucket][alpha bucket], aqua → violet across the screen. */
@@ -336,9 +346,14 @@ export class AsciiBackdrop {
   private drawGhost(col: number, row: number): void {
     const { ctx } = this;
     ctx.font = `13px 'JetBrains Mono', ui-monospace, monospace`;
-    ctx.fillStyle = rgba(VIOLET, 0.42);
+    const width = GHOST[0]?.length ?? 1;
     GHOST.forEach((line, i) => {
-      ctx.fillText(line, col * CELL_W, (row + i) * CELL_H);
+      for (let c = 0; c < line.length; c++) {
+        const ch = line[c] ?? ' ';
+        if (ch === ' ') continue;
+        ctx.fillStyle = GHOST_EYES.includes(ch) ? rgba(MINT, 0.8) : rgba(ghostTint(c, width), 0.5);
+        ctx.fillText(ch, (col + c) * CELL_W, (row + i) * CELL_H);
+      }
     });
   }
 }
