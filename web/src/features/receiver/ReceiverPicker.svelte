@@ -1,10 +1,10 @@
 <script lang="ts">
-  import Panel from '../../components/Panel.svelte';
   import Pill from '../../components/Pill.svelte';
   import { useApp } from '../../lib/state/context';
   import type { ReceiverDirectory } from '../../lib/protocol/generated';
   import { distanceKm, gridCenter, isProxied } from '../../lib/grid';
 
+  let { onPicked }: { onPicked?: () => void } = $props();
   const app = useApp();
   let directory = $state<ReceiverDirectory | null>(null);
   let loadError = $state<string | null>(null);
@@ -22,7 +22,6 @@
   }
 
   const dial = $derived(app.state.session?.tuning.dial_hz ?? 14_078_000);
-  const current = $derived(app.state.session?.receiver ?? null);
 
   const home = $derived(gridCenter(app.state.ghostnet?.home_grid));
 
@@ -68,6 +67,7 @@
       receiver: { host: r.host, port: r.port, name: r.name, tls: r.tls ?? false },
       password,
     });
+    onPicked?.();
   }
 
   function connectManual(ev: SubmitEvent): void {
@@ -82,67 +82,9 @@
   });
 </script>
 
-<Panel id="receiver" code="RX" title="Receiver">
-  {#snippet actions()}
-    {#if current}
-      <button
-        type="button"
-        class="btn ghost"
-        onclick={() => app.send({ v: 1, type: 'disconnect_receiver' })}
-      >
-        Release
-      </button>
-    {/if}
-  {/snippet}
-
-  <div class="current" data-testid="current-receiver">
-    {#if current}
-      <span class="host"
-        ><span class="live" aria-hidden="true"></span>{current.name ?? current.host}</span
-      >
-      <span class="mono muted">{current.host}:{current.port}</span>
-      <span class="mono muted" data-testid="watchers"
-        >{app.state.session?.subscribers ?? 0} watching</span
-      >
-    {:else}
-      <span class="muted">No receiver selected.</span>
-    {/if}
-  </div>
-
-  <details class="manual">
-    <summary>Manual host:port</summary>
-    <form onsubmit={connectManual}>
-      <label class="field"
-        >Host <input
-          class="input"
-          bind:value={manualHost}
-          placeholder="kiwi.example.net"
-          autocomplete="off"
-        /></label
-      >
-      <label class="field"
-        >Port <input
-          class="input"
-          type="number"
-          min="1"
-          max="65535"
-          bind:value={manualPort}
-        /></label
-      >
-      <label class="field"
-        >Password (optional) <input
-          class="input"
-          type="password"
-          bind:value={manualPassword}
-          autocomplete="off"
-        /></label
-      >
-      <button class="btn primary" type="submit">Listen</button>
-    </form>
-  </details>
-
-  <div class="search">
-    <label class="field">
+<div class="picker" data-testid="receiver-picker">
+  <div class="toolbar">
+    <label class="field grow">
       Public directory
       <input
         class="input"
@@ -157,12 +99,12 @@
       <label><input type="checkbox" bind:checked={hideFull} /> hide full</label>
       <label><input type="checkbox" bind:checked={hideProxied} /> hide proxied</label>
     </div>
-    {#if loadError}
-      <p class="warn">Directory unavailable ({loadError}). Manual entry still works.</p>
-    {:else if directory?.stale}
-      <p class="warn">Directory refresh failed; showing the last good list.</p>
-    {/if}
   </div>
+  {#if loadError}
+    <p class="warn">Directory unavailable ({loadError}). Manual entry still works.</p>
+  {:else if directory?.stale}
+    <p class="warn">Directory refresh failed; showing the last good list.</p>
+  {/if}
 
   <ul class="list" aria-label="Public receivers">
     {#each results as r (r.id)}
@@ -197,38 +139,54 @@
       <li class="muted">{directory ? 'No receivers match.' : 'Loading directory…'}</li>
     {/each}
   </ul>
-</Panel>
+
+  <details class="manual">
+    <summary>Manual host:port</summary>
+    <form onsubmit={connectManual}>
+      <label class="field"
+        >Host <input
+          class="input"
+          bind:value={manualHost}
+          placeholder="kiwi.example.net"
+          autocomplete="off"
+        /></label
+      >
+      <label class="field"
+        >Port <input
+          class="input"
+          type="number"
+          min="1"
+          max="65535"
+          bind:value={manualPort}
+        /></label
+      >
+      <label class="field"
+        >Password (optional) <input
+          class="input"
+          type="password"
+          bind:value={manualPassword}
+          autocomplete="off"
+        /></label
+      >
+      <button class="btn primary" type="submit">Listen</button>
+    </form>
+  </details>
+</div>
 
 <style>
-  .current {
+  .picker {
     display: grid;
-    gap: 2px;
-    margin-bottom: var(--g-space-4);
-    padding: var(--g-space-3);
-    border-radius: var(--g-radius-m);
-    background: var(--g-glass-raised);
-    border: 1px solid var(--g-hairline);
+    gap: var(--g-space-3);
   }
-  .host {
+  .toolbar {
     display: flex;
-    align-items: center;
-    gap: var(--g-space-2);
-    font-weight: 600;
-    color: var(--g-text);
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--g-space-3) var(--g-space-5);
   }
-  .live {
-    flex: none;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--g-signal);
-    box-shadow:
-      0 0 0 3px rgb(94 234 212 / 0.18),
-      0 0 10px var(--g-signal);
+  .grow {
+    flex: 1 1 16rem;
+    max-width: 28rem;
   }
   .muted {
     color: var(--g-text-muted);
@@ -237,10 +195,9 @@
   .warn {
     color: var(--g-warn);
     font-size: var(--g-text-s);
-    margin: var(--g-space-2) 0 0;
+    margin: 0;
   }
   .manual {
-    margin-bottom: var(--g-space-4);
     font-size: var(--g-text-s);
   }
   summary {
@@ -250,14 +207,18 @@
     font-weight: 600;
   }
   form {
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
     gap: var(--g-space-3);
     margin-top: var(--g-space-3);
   }
   .filters {
     display: flex;
-    gap: var(--g-space-4);
-    margin-top: var(--g-space-2);
+    flex-wrap: wrap;
+    gap: var(--g-space-2) var(--g-space-4);
+    min-height: 38px;
+    align-items: center;
     font-size: var(--g-text-s);
     color: var(--g-text-muted);
   }
@@ -268,17 +229,22 @@
   }
   .list {
     list-style: none;
-    margin: var(--g-space-3) calc(-1 * var(--g-space-2)) 0;
-    padding: 0 var(--g-space-2);
+    margin: 0;
+    padding: 0;
     display: grid;
-    gap: 4px;
-    max-height: 18rem;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 4px var(--g-space-3);
+    max-height: clamp(240px, 46vh, 520px);
     overflow: auto;
   }
   .list li {
     display: flex;
     align-items: center;
     gap: var(--g-space-2);
+    min-width: 0;
+  }
+  .list li.muted {
+    grid-column: 1 / -1;
   }
   .pick {
     flex: 1;

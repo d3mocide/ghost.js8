@@ -20,9 +20,7 @@ test.describe('ghost.js8 smoke', () => {
   test('has no transmit control anywhere', async ({ page, isMobile }) => {
     await page.goto('/');
     await expect(page.getByTestId('link-state')).toContainText('LINK ESTABLISHED');
-    const views = isMobile
-      ? ['Traffic', 'Waterfall', 'Stations', 'Map', 'Controls', 'Status']
-      : [''];
+    const views = isMobile ? ['Traffic', 'Waterfall', 'Stations', 'Map', 'Status'] : [''];
     for (const view of views) {
       if (view) await page.getByRole('button', { name: view, exact: true }).click();
       const controls = page.locator('button, input, select, textarea, [role="button"], a');
@@ -77,7 +75,7 @@ test.describe('ghost.js8 smoke', () => {
 
   test('audio monitor starts and stops cleanly', async ({ page, isMobile }) => {
     await page.goto('/');
-    if (isMobile) await page.getByRole('button', { name: 'Controls', exact: true }).click();
+    if (isMobile) await page.getByRole('button', { name: 'Waterfall', exact: true }).click();
     const toggle = page.getByTestId('audio-toggle');
     await expect(toggle).toHaveText(/enable audio/i);
     await toggle.click();

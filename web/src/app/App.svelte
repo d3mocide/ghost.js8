@@ -6,9 +6,7 @@
   import Backdrop from '../components/Backdrop.svelte';
   import SituationBar from '../features/status/SituationBar.svelte';
   import StatusPanel from '../features/status/StatusPanel.svelte';
-  import ReceiverPanel from '../features/receiver/ReceiverPanel.svelte';
-  import TuningPanel from '../features/tuning/TuningPanel.svelte';
-  import AudioPanel from '../features/audio/AudioPanel.svelte';
+  import RadioPanel from '../features/radio/RadioPanel.svelte';
   import WaterfallPanel from '../features/waterfall/WaterfallPanel.svelte';
   import TimelinePanel from '../features/timeline/TimelinePanel.svelte';
   import StationsPanel from '../features/stations/StationsPanel.svelte';
@@ -23,30 +21,21 @@
   const app = new GhostApp(url);
   provideApp(app);
 
-  type Tab = 'traffic' | 'ghostnet' | 'waterfall' | 'stations' | 'map' | 'controls' | 'status';
+  type Tab = 'traffic' | 'ghostnet' | 'waterfall' | 'stations' | 'map' | 'status';
   const TABS: readonly [Tab, string][] = [
     ['traffic', 'Traffic'],
     ['ghostnet', 'GhostNet'],
     ['waterfall', 'Waterfall'],
     ['stations', 'Stations'],
     ['map', 'Map'],
-    ['controls', 'Controls'],
     ['status', 'Status'],
   ];
   let tab = $state<Tab>('traffic');
   let phone = $state(false);
   let hash = $state(typeof window === 'undefined' ? '' : window.location.hash);
   const netId = $derived(netIdFromHash(hash));
-  let receiverPanel: { focusSearch(): void } | undefined = $state();
 
   const show = (t: Tab): boolean => !phone || tab === t;
-
-  function switchReceiver(): void {
-    tab = 'controls';
-    queueMicrotask(() => {
-      receiverPanel?.focusSearch();
-    });
-  }
 
   const release = (): void => {
     void app.stop();
@@ -80,7 +69,7 @@
 
 <div class="shell">
   <FlashAlert />
-  <SituationBar onSwitch={switchReceiver} />
+  <SituationBar />
 
   {#if netId}
     <NetLogView {netId} />
@@ -102,21 +91,18 @@
 
     <main class="grid" class:phone>
       <div class="col controls">
-        {#if show('controls')}
-          {#if !phone}<GhostNetPanel />{/if}
-          <ReceiverPanel bind:this={receiverPanel} />
-          <AudioPanel />
-        {/if}
+        {#if !phone}<GhostNetPanel /><RadioPanel /><StatusPanel />{/if}
       </div>
       <div class="col center">
+        {#if phone && show('waterfall')}<RadioPanel />{/if}
+        {#if show('waterfall')}<WaterfallPanel />{/if}
         {#if show('traffic')}<div class="fill"><TimelinePanel /></div>{/if}
-        {#if show('waterfall')}<TuningPanel /><WaterfallPanel />{/if}
       </div>
       <div class="col side">
         {#if phone && show('ghostnet')}<GhostNetPanel />{/if}
         {#if show('map')}<MapPanel />{/if}
-        {#if show('stations')}<StationsPanel />{/if}
-        {#if show('status')}<StatusPanel />{/if}
+        {#if show('stations')}<div class="fill-side"><StationsPanel /></div>{/if}
+        {#if phone && show('status')}<StatusPanel />{/if}
       </div>
     </main>
   {/if}
@@ -175,6 +161,24 @@
     .fill > :global(.panel) {
       position: absolute;
       inset: 0;
+    }
+    /* Heard stations take whatever height the map leaves, and scroll inside. */
+    .col.side {
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+    }
+    .fill-side {
+      position: relative;
+      flex: 1;
+      min-height: 280px;
+    }
+    .fill-side > :global(.panel) {
+      position: absolute;
+      inset: 0;
+    }
+    .fill-side :global(.scroll) {
+      max-height: none;
     }
   }
   .grid.phone {

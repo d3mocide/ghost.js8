@@ -2,6 +2,7 @@
   import Panel from '../../components/Panel.svelte';
   import Pill from '../../components/Pill.svelte';
   import { useApp } from '../../lib/state/context';
+  import { decodeMarks } from '../../lib/waterfall/marks';
   import { WaterfallRenderer } from '../../lib/waterfall/renderer';
   import { COLORMAPS, type ColormapName } from '../../lib/waterfall/colormap';
   import type { TuningModel } from '../../lib/protocol/generated';
@@ -34,6 +35,14 @@
     app.state.lastWaterfallAt !== null && app.now - app.state.lastWaterfallAt < 5000,
   );
   const ticks = [0, 500, 1000, 1500, 2000, 2500, 3000];
+  // Signals the decoder copied in the last minute, on the same axis as the waterfall.
+  const marks = $derived(
+    decodeMarks(app.state.decodes, app.now, {
+      lo: OFFSET_LO,
+      hi: OFFSET_HI,
+      flip: tuning.mode !== 'usb',
+    }),
+  );
 
   function xForOffset(offset: number): number {
     const frac = (offset - OFFSET_LO) / (OFFSET_HI - OFFSET_LO);
@@ -96,6 +105,11 @@
 
 <Panel id="waterfall" code="W/F" title="Waterfall" flush>
   {#snippet actions()}
+    <span
+      class="range mono"
+      title="JS8Call decodes every signal inside the passband, at all speeds (slow, normal, fast, turbo)."
+      >decoding {tuning.low_cut_hz}–{tuning.high_cut_hz} Hz</span
+    >
     <Pill tone={fresh ? 'ok' : 'warn'} label={fresh ? 'live' : 'stale'} />
     <label class="sr-only" for="colormap">Colormap</label>
     <select id="colormap" class="input cmap" bind:value={colormap}>
@@ -105,6 +119,18 @@
   <div class="axis mono" aria-hidden="true">
     {#each ticks as t (t)}
       <span style:left={`${String(xForOffset(t))}%`}>{t}</span>
+    {/each}
+  </div>
+  <div class="marks" aria-hidden="true" title="Signals decoded in the last minute">
+    {#each marks as m (m.key)}
+      <span
+        class="mark"
+        class:dir={m.directed}
+        style:left={`${String(m.left)}%`}
+        style:width={`${String(m.width)}%`}
+        style:opacity={m.alpha}
+        title={m.title}
+      ></span>
     {/each}
   </div>
   <div class="wrap" bind:this={wrap}>
@@ -145,9 +171,36 @@
     top: 4px;
     transform: translateX(-50%);
   }
+  .marks {
+    position: relative;
+    height: 12px;
+    margin: 0 var(--g-space-3) 2px; /* same inset as .wrap so marks line up with the axis */
+  }
+  .mark {
+    position: absolute;
+    top: 3px;
+    height: 6px;
+    min-width: 4px;
+    border-radius: 3px;
+    background: var(--g-violet, #a78bfa);
+  }
+  .mark.dir {
+    background: var(--g-signal);
+    box-shadow: 0 0 8px var(--g-signal);
+  }
+  .range {
+    color: var(--g-text-muted);
+    font-size: var(--g-text-xs);
+    white-space: nowrap;
+  }
+  @media (max-width: 720px) {
+    .range {
+      display: none; /* the passband lines already show it; keep the title readable */
+    }
+  }
   .wrap {
     position: relative;
-    height: clamp(220px, 38vh, 520px);
+    height: clamp(120px, 19vh, 260px);
     margin: 0 var(--g-space-3) var(--g-space-3);
     border-radius: var(--g-radius-m);
     overflow: hidden;

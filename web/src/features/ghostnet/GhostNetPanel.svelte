@@ -4,7 +4,7 @@
   import type { PillTone } from '../../components/pill';
   import { useApp } from '../../lib/state/context';
   import { countdown, localWhen, REGION_LABEL } from '../../lib/ghostnet';
-  import { formatMHz, utcDateTime } from '../../lib/format';
+  import { formatMHz, utcDateTime, utcTime } from '../../lib/format';
   import type { GhostNet, NetSummary } from '../../lib/protocol/generated';
 
   const app = useApp();
@@ -22,6 +22,21 @@
   const target = $derived(g?.window ?? g?.next_window ?? null);
   const inWindow = $derived(target !== null && g?.window !== null && g?.window !== undefined);
   const started = $derived(target ? Date.parse(target.start) <= app.now : false);
+  // How far through the window we are, 0..1 (only meaningful while it is under way).
+  const progress = $derived.by(() => {
+    if (!target || !inWindow || !started) return 0;
+    const a = Date.parse(target.start);
+    const b = Date.parse(target.end);
+    return b > a ? Math.min(1, Math.max(0, (app.now - a) / (b - a))) : 0;
+  });
+  const hhmm = (iso: string): string => `${utcTime(iso, false)}Z`;
+  // "nearest free receiver: 283 km, SNR 26 dB" -> "283 km away, SNR 26 dB"
+  const receiverNote = $derived(
+    (g?.receiver_reason ?? '')
+      .replace(/^nearest free receiver:\s*/i, '')
+      .replace(/ km,/, ' km away,'),
+  );
+  const manual = $derived(g?.mode === 'paused');
 
   async function load(): Promise<void> {
     try {
@@ -64,33 +79,59 @@
     {#if target}
       <div class="window" class:live={inWindow}>
         <div class="label">
-          {#if g.recording_net_id}<span class="rec" aria-label="recording"
-              ><span aria-hidden="true">●</span> REC</span
+          {#if g.recording_net_id}<span class="rec" role="img" aria-label="recording"
+              ><span class="dot" aria-hidden="true"></span>REC</span
             >{/if}
-          {target.label}
+          <span class="name">{target.label}</span>
         </div>
-        <div class="mono freq">{target.band} · {formatMHz(target.dial_hz)} MHz USB</div>
-        <div class="when mono">
-          {#if inWindow && started}
-            ends in <strong>{countdown(app.now, Date.parse(target.end))}</strong>
-          {:else}
-            {inWindow ? 'pre-roll · starts in' : 'next in'}
-            <strong>{countdown(app.now, Date.parse(target.start))}</strong>
-          {/if}
+        <div class="freq mono">
+          <span class="band">{target.band}</span>
+          {formatMHz(target.dial_hz)} MHz USB
         </div>
-        <div class="times">
-          {utcDateTime(target.start)} · local {localWhen(target.start)}
+        <div class="count">
+          <strong class="mono">
+            {#if inWindow && started}
+              {countdown(app.now, Date.parse(target.end))}
+            {:else}
+              {countdown(app.now, Date.parse(target.start))}
+            {/if}
+          </strong>
+          <span class="count-label">
+            {#if inWindow && started}left on air{:else if inWindow}pre-roll, on air in{:else}until
+              next net{/if}
+          </span>
+        </div>
+        {#if inWindow && started}
+          <div
+            class="bar"
+            role="progressbar"
+            aria-label="Time into the net"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={Math.round(progress * 100)}
+          >
+            <span style:width={`${String(progress * 100)}%`}></span>
+          </div>
+        {/if}
+        <div class="times mono">
+          {hhmm(target.start)} – {hhmm(target.end)} · {localWhen(target.start)} local
         </div>
       </div>
     {/if}
 
-    {#if g.receiver_reason}<p class="muted small">Receiver: {g.receiver_reason}</p>{/if}
-    {#if g.mode === 'paused' && g.paused_until}
-      <p class="warn small">
-        A viewer took manual control; autopilot resumes {utcDateTime(g.paused_until)}.
+    {#if manual}
+      <p class="notice">
+        <span aria-hidden="true">⏸</span>
+        <span
+          >Manual control{#if g.paused_until}. Autopilot resumes <strong class="mono"
+              >{hhmm(g.paused_until)}</strong
+            >{/if}</span
+        >
       </p>
+    {:else}
+      {#if receiverNote}<p class="muted small">Receiver: {receiverNote}</p>{/if}
+      {#if g.detail}<p class="warn small">{g.detail}</p>{/if}
     {/if}
-    {#if g.detail}<p class="warn small">{g.detail}</p>{/if}
   {/if}
 
   <h3 class="caps">Recorded nets</h3>
@@ -105,10 +146,12 @@
           <a href={`#/nets/${n.id}`} data-testid="net-link">
             <span class="name">{n.label}</span>
             <span class="meta mono">
-              {utcDateTime(n.scheduled_start)} · {n.decode_count} decodes · {n.station_count} stations
-              {#if n.ended === null}· <span class="live">recording</span>{/if}
+              <span>{utcDateTime(n.scheduled_start).slice(5, 16)}Z</span>
+              <span>{n.decode_count} decodes</span>
+              <span>{n.station_count} stations</span>
             </span>
           </a>
+          {#if n.ended === null}<Pill tone="alert" label="rec" />{/if}
           {#if n.flash_count > 0}<Pill tone="alert" label={`${String(n.flash_count)} flash`} />{/if}
         </li>
       {/each}
@@ -137,37 +180,102 @@
     box-shadow: 0 0 24px -6px rgb(94 234 212 / 0.35);
   }
   .label {
-    font-size: var(--g-text-m);
-    font-weight: 600;
     display: flex;
     gap: var(--g-space-2);
     align-items: center;
+    min-width: 0;
+  }
+  .label .name {
+    font-size: var(--g-text-m);
+    font-weight: 600;
+    min-width: 0;
   }
   .rec {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 1px 8px 1px 6px;
+    border-radius: var(--g-radius-pill);
+    border: 1px solid rgb(251 113 133 / 0.4);
+    background: rgb(251 113 133 / 0.12);
     color: var(--g-alert);
     font-family: var(--g-font-mono);
-    font-size: var(--g-text-xs);
+    font-size: 10.5px;
+    font-weight: 600;
     letter-spacing: 0.1em;
-    animation: blink 1.6s steps(2, start) infinite;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--g-alert);
+    box-shadow: 0 0 8px var(--g-alert);
+    animation: pulse 1.6s ease-in-out infinite;
   }
   .freq {
+    display: flex;
+    align-items: center;
+    gap: var(--g-space-2);
     color: var(--g-signal);
     font-size: var(--g-text-s);
   }
-  .when {
-    font-size: var(--g-text-s);
+  .band {
+    padding: 0 7px;
+    border-radius: var(--g-radius-pill);
+    background: var(--g-accent-soft);
     color: var(--g-text);
+    font-size: var(--g-text-xs);
   }
-  .when strong {
+  .count {
+    display: flex;
+    align-items: baseline;
+    gap: var(--g-space-2);
+    margin-top: var(--g-space-2);
+  }
+  .count strong {
+    font-size: 1.6rem;
+    font-weight: 600;
+    line-height: 1.1;
     background: var(--g-accent);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    font-weight: 600;
+  }
+  .count-label {
+    color: var(--g-text-muted);
+    font-size: var(--g-text-xs);
+  }
+  .bar {
+    height: 4px;
+    margin-top: var(--g-space-2);
+    border-radius: 2px;
+    background: var(--g-hairline);
+    overflow: hidden;
+  }
+  .bar span {
+    display: block;
+    height: 100%;
+    background: var(--g-accent);
+    border-radius: 2px;
+    transition: width 1s linear;
   }
   .times {
+    margin-top: var(--g-space-2);
     font-size: var(--g-text-xs);
     color: var(--g-text-muted);
+  }
+  .notice {
+    display: flex;
+    gap: var(--g-space-2);
+    align-items: baseline;
+    margin: var(--g-space-3) 0 0;
+    padding: var(--g-space-2) var(--g-space-3);
+    border-radius: var(--g-radius-m);
+    border: 1px solid rgb(252 211 77 / 0.25);
+    background: rgb(252 211 77 / 0.07);
+    color: var(--g-warn);
+    font-size: var(--g-text-xs);
   }
   h3 {
     margin: var(--g-space-4) 0 var(--g-space-2);
@@ -210,16 +318,19 @@
     border-color: var(--g-border-strong);
     background: rgb(255 255 255 / 0.09);
   }
-  .name {
+  .nets .name {
     font-size: var(--g-text-s);
     font-weight: 600;
   }
   .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--g-space-3);
     font-size: var(--g-text-xs);
     color: var(--g-text-muted);
   }
-  .live {
-    color: var(--g-alert);
+  .meta span {
+    white-space: nowrap;
   }
   .muted {
     color: var(--g-text-muted);
@@ -240,9 +351,17 @@
   code {
     color: var(--g-chrome);
   }
-  @keyframes blink {
-    to {
+  @keyframes pulse {
+    50% {
       opacity: 0.35;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dot {
+      animation: none;
+    }
+    .bar span {
+      transition: none;
     }
   }
 </style>

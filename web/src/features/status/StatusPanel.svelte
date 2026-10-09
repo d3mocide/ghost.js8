@@ -46,10 +46,13 @@
         {@const c = h.components[key]}
         <li data-testid={`health-${key}`}>
           <span class="name">{label}</span>
-          <Pill tone={TONE[c.state]} label={LABEL[c.state]} title={c.detail} />
-          <span class="evidence mono">
-            {#if c.last_seen}seen {ago(c.last_seen, app.now)} ago{:else}—{/if}
-          </span>
+          <Pill
+            tone={TONE[c.state]}
+            label={LABEL[c.state]}
+            title={[c.detail, c.last_seen ? `seen ${ago(c.last_seen, app.now)} ago` : '']
+              .filter(Boolean)
+              .join(' · ')}
+          />
           {#if c.detail && c.state !== 'ok'}<span class="detail">{c.detail}</span>{/if}
         </li>
       {/each}
@@ -75,7 +78,7 @@
   }
   li {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: var(--g-space-2);
     padding: 4px 0;
@@ -91,13 +94,6 @@
   }
   .name {
     color: var(--g-text-muted);
-  }
-  .evidence {
-    color: var(--g-text-muted);
-    font-size: var(--g-text-xs);
-    min-width: 0;
-    white-space: nowrap;
-    text-align: right;
   }
   .detail {
     grid-column: 1 / -1;

@@ -22,6 +22,27 @@
     <a class="brand" href="#/" aria-label="ghost.js8 home"><Logo size={38} /></a>
     <span class="tagline">JS8 ops console</span>
     <span class="spacer"></span>
+    <!--
+      Capability, not brand. The contract's hello has receive_only: true for every
+      build today; a future transmit extension changes the contract and this chip.
+    -->
+    <span
+      class="mode"
+      data-testid="mode-chip"
+      title="Receive mode: this build has no transmit path"
+    >
+      <span class="sr-only">Mode:</span>
+      <span class="led" aria-hidden="true"></span>RX
+    </span>
+    <div class="status">
+      <span class="link {link}" data-testid="link-state">
+        <span class="dot" aria-hidden="true"></span>
+        <span class="label">{linkText}</span>
+      </span>
+      <time class="utc mono" datetime={new Date(app.now).toISOString()} aria-label="UTC time">
+        {utcTime(new Date(app.now))}<span class="z">Z</span>
+      </time>
+    </div>
     <button
       type="button"
       class="fx"
@@ -38,25 +59,6 @@
       >
       <span class="sr-only">Animated backdrop</span>
     </button>
-    <!--
-      Capability, not brand. The contract's hello has receive_only: true for every
-      build today; a future transmit extension changes the contract and this chip.
-    -->
-    <span
-      class="mode"
-      data-testid="mode-chip"
-      title="Receive mode: this build has no transmit path"
-    >
-      <span class="sr-only">Mode:</span>
-      <span class="led" aria-hidden="true"></span>RX
-    </span>
-    <span class="link {link}" data-testid="link-state">
-      <span class="dot" aria-hidden="true"></span>
-      <span class="label">{linkText}</span>
-    </span>
-    <time class="utc mono" datetime={new Date(app.now).toISOString()} aria-label="UTC time">
-      {utcTime(new Date(app.now))}<span class="z">Z</span>
-    </time>
   </div>
 </div>
 
@@ -66,10 +68,10 @@
     top: 0;
     z-index: 50;
     padding: var(--g-space-2) var(--g-gutter);
-    background: linear-gradient(180deg, rgb(5 6 12 / 0.75), rgb(5 6 12 / 0.35));
+    background: linear-gradient(180deg, rgb(5 6 12 / 0.92), rgb(5 6 12 / 0.82));
     border-bottom: 1px solid var(--g-hairline);
-    backdrop-filter: blur(18px) saturate(160%);
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
   }
   .inner {
     max-width: 1680px;
@@ -138,10 +140,20 @@
     background: currentColor;
     box-shadow: 0 0 8px currentColor;
   }
+  /* Link state and the clock read as one capsule. */
+  .status {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--g-border);
+    border-radius: var(--g-radius-pill);
+    background: var(--g-glass-raised);
+    overflow: hidden;
+  }
   .link {
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    padding: 5px 12px 5px 14px;
     font-family: var(--g-font-mono);
     font-size: 10.5px;
     letter-spacing: 0.1em;
@@ -167,10 +179,8 @@
     color: var(--g-alert);
   }
   .utc {
-    padding: 4px 10px;
-    border-radius: var(--g-radius-s);
-    background: var(--g-glass-raised);
-    border: 1px solid var(--g-border);
+    padding: 5px 14px 5px 12px;
+    border-left: 1px solid var(--g-hairline);
     color: var(--g-text);
     font-size: var(--g-text-s);
   }
@@ -192,7 +202,10 @@
       gap: var(--g-space-2);
     }
     .utc {
-      padding: 2px 6px;
+      padding: 4px 8px;
+    }
+    .link {
+      padding: 4px 4px 4px 10px;
     }
   }
 </style>

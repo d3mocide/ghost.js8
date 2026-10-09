@@ -3,9 +3,15 @@
   import { useApp } from '../../lib/state/context';
   import { stationList } from '../../lib/state/state';
   import { ago, formatSnr } from '../../lib/format';
+  import { distanceKm, gridCenter } from '../../lib/grid';
 
   const app = useApp();
   const stations = $derived(stationList(app.state));
+  const home = $derived(gridCenter(app.state.ghostnet?.home_grid));
+  const km = (grid: string | null): string => {
+    const c = gridCenter(grid);
+    return home && c ? Math.round(distanceKm(home, c)).toLocaleString() : '—';
+  };
 </script>
 
 <Panel id="stations" code="HRD" title="Heard stations" flush>
@@ -21,7 +27,9 @@
           <tr
             ><th scope="col">Callsign</th><th scope="col">Heard</th><th scope="col">SNR</th><th
               scope="col">Grid</th
-            ><th scope="col">Count</th></tr
+            >{#if home}<th scope="col" title="Distance from home, km">km</th>{/if}<th scope="col"
+              >Count</th
+            ></tr
           >
         </thead>
         <tbody>
@@ -31,6 +39,7 @@
               <td class="mono">{ago(s.last_heard_utc, app.now)}</td>
               <td class="mono num">{formatSnr(s.snr_db)}</td>
               <td class="mono">{s.grid ?? '—'}</td>
+              {#if home}<td class="mono num">{km(s.grid)}</td>{/if}
               <td class="mono num">{s.heard_count}</td>
             </tr>
           {/each}
@@ -67,7 +76,8 @@
   }
   th,
   td {
-    padding: 7px var(--g-space-4);
+    padding: 7px 8px;
+    white-space: nowrap;
     text-align: left;
     border-bottom: 1px solid var(--g-hairline);
   }
@@ -82,6 +92,12 @@
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+  }
+  tr > :first-child {
+    padding-left: var(--g-space-4);
+  }
+  tr > :last-child {
+    padding-right: var(--g-space-4);
   }
   .call {
     color: var(--g-accent-a);

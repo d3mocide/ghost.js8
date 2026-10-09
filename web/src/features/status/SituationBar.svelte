@@ -7,9 +7,22 @@
   import { bandFor } from '../../lib/bands';
   import { ago, formatMHz } from '../../lib/format';
   import Pill from '../../components/Pill.svelte';
+  import ReceiverPicker from '../receiver/ReceiverPicker.svelte';
 
-  let { onSwitch }: { onSwitch: () => void } = $props();
   const app = useApp();
+  // The receiver picker lives in a drawer under the hero: closed until asked for.
+  let open = $state(false);
+  function onKey(e: KeyboardEvent): void {
+    if (open && e.key === 'Escape') open = false;
+  }
+  let picker: { focusSearch(): void } | undefined = $state();
+  $effect(() => {
+    if (open && window.matchMedia('(pointer: fine)').matches) {
+      queueMicrotask(() => {
+        picker?.focusSearch();
+      });
+    }
+  });
   const s = $derived(situation(app.state, app.now));
   const session = $derived(app.state.session);
   const dial = $derived(session?.tuning.dial_hz ?? null);
@@ -20,6 +33,8 @@
   const heard = $derived(stationList(app.state).length);
   const lastDecode = $derived(app.state.health?.last_decode_utc ?? null);
 </script>
+
+<svelte:window onkeydown={onKey} />
 
 <section class="hero {s.tone}" aria-label="Station overview">
   <div class="tuned">
@@ -34,11 +49,19 @@
         {#if band}<span class="band mono">{band}</span>{/if}
       </span>
     </div>
-    <span class="rx" title={session?.receiver?.host}>
-      {session?.receiver
-        ? (session.receiver.name ?? session.receiver.host)
-        : 'No receiver selected'}
-    </span>
+    <div class="rx-row">
+      <span class="rx" title={session?.receiver?.host}>
+        {session?.receiver
+          ? (session.receiver.name ?? session.receiver.host)
+          : 'No receiver selected'}
+      </span>
+    </div>
+    {#if session?.receiver}
+      <span class="mono sub" data-testid="current-receiver"
+        >{session.receiver.host}:{session.receiver.port} ·
+        <span data-testid="watchers">{session.subscribers} watching</span></span
+      >
+    {/if}
   </div>
 
   <div
@@ -49,26 +72,60 @@
     aria-live="polite"
   >
     <Pill tone={s.tone} label={s.headline} />
-    <p class:quiet={s.tone === 'ok'}>{s.detail}</p>
+    <p>{s.detail}</p>
     {#if s.suggestSwitch}
-      <button type="button" class="btn primary" onclick={onSwitch}>Choose receiver</button>
+      <button type="button" class="btn primary" onclick={() => (open = true)}
+        >Choose receiver</button
+      >
     {/if}
   </div>
 
-  <dl class="stats">
-    <div>
-      <dt>Decodes · 1 h</dt>
-      <dd class="mono num">{lastHour}</dd>
+  <div class="right">
+    <dl class="stats">
+      <div>
+        <dt>Decodes · 1 h</dt>
+        <dd class="mono num">{lastHour}</dd>
+      </div>
+      <div>
+        <dt>Stations</dt>
+        <dd class="mono num">{heard}</dd>
+      </div>
+      <div>
+        <dt>Last decode</dt>
+        <dd class="mono num">{lastDecode ? ago(lastDecode, app.now) : '—'}</dd>
+      </div>
+    </dl>
+    <div class="receiver-controls">
+      <button
+        type="button"
+        class="btn ghost toggle"
+        aria-expanded={open}
+        aria-controls="receiver-drawer"
+        data-testid="receiver-toggle"
+        onclick={() => (open = !open)}
+      >
+        Receiver <span aria-hidden="true">{open ? '▴' : '▾'}</span>
+      </button>
+      {#if session?.receiver}
+        <button
+          type="button"
+          class="btn ghost toggle"
+          onclick={() => app.send({ v: 1, type: 'disconnect_receiver' })}>Release</button
+        >
+      {/if}
     </div>
-    <div>
-      <dt>Stations</dt>
-      <dd class="mono num">{heard}</dd>
+  </div>
+
+  {#if open}
+    <div id="receiver-drawer" class="drawer" role="region" aria-label="Choose a receiver">
+      <ReceiverPicker
+        bind:this={picker}
+        onPicked={() => {
+          open = false;
+        }}
+      />
     </div>
-    <div>
-      <dt>Last decode</dt>
-      <dd class="mono num">{lastDecode ? ago(lastDecode, app.now) : '—'}</dd>
-    </div>
-  </dl>
+  {/if}
 </section>
 
 <style>
@@ -141,7 +198,40 @@
     color: var(--g-text);
     font-size: 10.5px;
   }
+  .rx-row {
+    display: flex;
+    align-items: center;
+    gap: var(--g-space-2);
+    min-width: 0;
+  }
+  .right {
+    display: grid;
+    gap: var(--g-space-2);
+    justify-items: stretch;
+  }
+  /* Same width as the three stat chips above, split between the two buttons. */
+  .receiver-controls {
+    display: flex;
+    gap: var(--g-space-2);
+  }
+  .toggle {
+    flex: 1;
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: var(--g-text-xs);
+    justify-content: center;
+  }
+  .sub {
+    color: var(--g-text-dim);
+    font-size: var(--g-text-xs);
+  }
+  .drawer {
+    grid-column: 1 / -1;
+    padding-top: var(--g-space-4);
+    border-top: 1px solid var(--g-hairline);
+  }
   .rx {
+    min-width: 0;
     color: var(--g-text-muted);
     font-size: var(--g-text-s);
     white-space: nowrap;
@@ -181,6 +271,23 @@
     font-weight: 600;
     color: var(--g-text);
   }
+  /* Healthy: the pill and its sentence only repeat what the figures already say, so it
+     stays in the DOM (a polite live region for screen readers) but takes no space. */
+  .hero.ok .situation {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  @media (min-width: 721px) {
+    .hero.ok {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+  }
   @media (max-width: 1280px) {
     .hero {
       grid-template-columns: minmax(0, 1fr) auto;
@@ -215,10 +322,6 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-    /* Healthy state: the headline pill says it all; keep prose for warnings. */
-    .situation p.quiet {
-      display: none;
     }
     .situation {
       gap: var(--g-space-2);
