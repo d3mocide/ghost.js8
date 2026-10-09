@@ -1310,6 +1310,46 @@
       "title": "Station",
       "type": "object"
     },
+    "StationHistory": {
+      "additionalProperties": false,
+      "description": "What the store knows about one callsign (GET /api/stations/{callsign}).",
+      "properties": {
+        "callsign": {
+          "type": "string"
+        },
+        "station": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Station"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decodes": {
+          "items": {
+            "$ref": "#/$defs/Decode"
+          },
+          "type": "array"
+        },
+        "sent": {
+          "type": "integer"
+        },
+        "received": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "callsign",
+        "decodes",
+        "received",
+        "sent",
+        "station"
+      ],
+      "title": "StationHistory",
+      "type": "object"
+    },
     "Subscribe": {
       "additionalProperties": false,
       "description": "Opt in to binary channels. Both default off: no bytes the viewer does not want.",

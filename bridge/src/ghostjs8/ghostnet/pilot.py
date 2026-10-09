@@ -103,6 +103,7 @@ class GhostNetPilot:
         self.detail = ""
         self._selected_at: datetime | None = None
         self._connected_since: datetime | None = None
+        self._foreign_since: datetime | None = None
         self._last_status: str | None = None
         self._last_prune: datetime | None = None
         station.operator_action.append(self.operator_took_control)
@@ -237,13 +238,15 @@ class GhostNetPilot:
                 return False  # a feed we did not choose that works (unknown coverage): keep it
             if ours.min_hz <= dial_hz <= ours.max_hz:
                 return False  # a working receiver is never worth replacing
-        if (
-            st.target is None
-            or ours is None
-            or st.target.host != ours.host
-            or st.target.port != ours.port
-        ):
-            return True  # not on a receiver we chose
+        if st.target is None:
+            return True
+        if ours is None or st.target.host != ours.host or st.target.port != ours.port:
+            # Someone else's choice (the operator's boot target, or a viewer's). Give it the
+            # same time to connect as one of ours before deciding it is not working.
+            if self._foreign_since is None:
+                self._foreign_since = now
+            return now - self._foreign_since > self.config.connect_grace
+        self._foreign_since = None
         if not (ours.min_hz <= dial_hz <= ours.max_hz):
             return True
         if st.state in ("rejected", "failed"):

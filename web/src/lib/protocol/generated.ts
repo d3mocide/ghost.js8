@@ -371,3 +371,16 @@ export interface ReceiverListing {
   antenna: string;
   snr_db: number | null;
 }
+/**
+ * What the store knows about one callsign (GET /api/stations/{callsign}).
+ *
+ * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
+ * via the `definition` "StationHistory".
+ */
+export interface StationHistory {
+  callsign: string;
+  station: Station | null;
+  decodes: Decode[];
+  sent: number;
+  received: number;
+}

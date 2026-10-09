@@ -115,6 +115,45 @@ class Store:
         ).fetchall()
         return [Decode.model_validate_json(r[0]) for r in rows]
 
+    def station_decodes(self, callsign: str, limit: int = 200) -> list[Decode]:
+        """Transmissions sent by or addressed to ``callsign``, newest first.
+
+        JS8Call reports one transmission twice (an activity line, then the directed
+        message); the two share a time and offset, so keep the directed one.
+        """
+        rows = self._db.execute(
+            "SELECT json FROM decodes WHERE json_extract(json, '$.from_call') = :call "
+            "OR json_extract(json, '$.to_call') = :call ORDER BY id DESC LIMIT :limit",
+            {"call": callsign, "limit": limit * 2},
+        ).fetchall()
+        out: list[Decode] = []
+        at: dict[tuple[object, int], int] = {}
+        for (raw,) in rows:
+            d = Decode.model_validate_json(raw)
+            key = (d.utc, d.offset_hz)
+            if key in at:
+                if d.kind == "directed" and out[at[key]].kind != "directed":
+                    out[at[key]] = d
+                continue
+            at[key] = len(out)
+            out.append(d)
+        return out[:limit]
+
+    def station_counts(self, callsign: str) -> tuple[int, int]:
+        """(sent, received) transmission totals for ``callsign``."""
+
+        sent = self._db.execute(
+            "SELECT COUNT(*) FROM (SELECT DISTINCT utc, json_extract(json, '$.offset_hz') "
+            "FROM decodes WHERE json_extract(json, '$.from_call') = ?)",
+            (callsign,),
+        ).fetchone()
+        received = self._db.execute(
+            "SELECT COUNT(*) FROM (SELECT DISTINCT utc, json_extract(json, '$.offset_hz') "
+            "FROM decodes WHERE json_extract(json, '$.to_call') = ?)",
+            (callsign,),
+        ).fetchone()
+        return int(sent[0]), int(received[0])
+
     def stations(
         self, *, within: timedelta = timedelta(hours=24), limit: int = 500
     ) -> list[Station]:

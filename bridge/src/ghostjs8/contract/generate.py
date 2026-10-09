@@ -37,7 +37,7 @@ CLIENT: list[type[BaseModel]] = [
     m.Subscribe,
     m.Ping,
 ]
-HTTP: list[type[BaseModel]] = [m.ReceiverDirectory, m.NetSummary, m.NetLog]
+HTTP: list[type[BaseModel]] = [m.ReceiverDirectory, m.NetSummary, m.NetLog, m.StationHistory]
 
 
 def _strip_titles(node: object) -> None:

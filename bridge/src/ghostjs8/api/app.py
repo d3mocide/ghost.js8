@@ -14,11 +14,12 @@ import asyncio
 import contextlib
 import json
 import logging
+import re
 from collections.abc import AsyncIterator, Awaitable, Sequence
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
@@ -32,6 +33,7 @@ from ghostjs8.contract.messages import (
     Ping,
     Pong,
     SelectReceiver,
+    StationHistory,
     Subscribe,
     Tune,
     client_message_adapter,
@@ -45,6 +47,8 @@ from ghostjs8.util.clock import Clock, SystemClock
 
 log = logging.getLogger("ghostjs8.api")
 
+#: Amateur callsigns, with an optional /portable suffix.
+CALLSIGN = re.compile(r"^[A-Z0-9]{3,10}(/[A-Z0-9]{1,4})?$")
 CONTROL_BURST = 10  # control messages per client ...
 CONTROL_WINDOW_S = 5.0  # ... per this many seconds
 MAX_CLIENT_MESSAGE_BYTES = 4096
@@ -151,6 +155,21 @@ def create_app(
     @app.get("/api/receivers")
     async def api_receivers() -> JSONResponse:
         return JSONResponse(json.loads((await receivers.get()).model_dump_json()))
+
+    @app.get("/api/stations/{callsign}")
+    async def api_station(callsign: str) -> JSONResponse:
+        call = callsign.upper()
+        if store is None or not CALLSIGN.match(call):
+            raise HTTPException(status_code=404, detail="no such station")
+        sent, received = store.station_counts(call)
+        body = StationHistory(
+            callsign=call,
+            station=store.station(call),
+            decodes=store.station_decodes(call),
+            sent=sent,
+            received=received,
+        )
+        return JSONResponse(json.loads(body.model_dump_json()))
 
     app.include_router(nets_router(store, recordings))
 

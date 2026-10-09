@@ -263,6 +263,16 @@ class NetSummary(_Model):
     operator_override: bool  # a viewer retuned during the window
 
 
+class StationHistory(_Model):
+    """What the store knows about one callsign (GET /api/stations/{callsign})."""
+
+    callsign: str
+    station: Station | None  # None when it was only ever addressed, never heard
+    decodes: list[Decode]  # newest first: sent by or addressed to this callsign
+    sent: int  # total in the store, not just the page returned
+    received: int
+
+
 class NetLog(_Model):
     """A recorded net with its traffic (GET /api/nets/{id})."""
 

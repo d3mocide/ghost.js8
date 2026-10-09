@@ -269,3 +269,41 @@ async def test_silent_receiver_is_benched_for_hours_not_minutes(tmp_path: Path) 
     await pilot.tick()
     assert station.target.host == "far.example"  # near.example is still benched
     assert timedelta(hours=2) < NO_AUDIO_COOLDOWN
+
+
+async def test_boot_target_gets_the_connect_grace_before_the_autopilot_replaces_it(
+    tmp_path: Path,
+) -> None:
+    from ghostjs8.session.station import ReceiverTarget  # noqa: PLC0415
+
+    pilot, station, clock, _ = make(tmp_path, "2026-10-08T20:00:00")
+    station.select_receiver(ReceiverTarget("mid.example", 8073, trusted=True))  # boot target
+    station.state = "connecting"
+    await pilot.tick()
+    assert station.target is not None
+    assert station.target.host == "mid.example"  # not swapped on the first tick
+
+    station.state = "connected"  # it came up
+    clock.advance(600)
+    await pilot.tick()
+    assert station.target.host == "mid.example"
+    assert pilot.listing is not None
+    assert pilot.listing.id == "mid"  # adopted from the directory
+
+
+async def test_boot_target_that_never_connects_is_replaced_after_the_grace(
+    tmp_path: Path,
+) -> None:
+    from ghostjs8.session.station import ReceiverTarget  # noqa: PLC0415
+
+    pilot, station, clock, _ = make(tmp_path, "2026-10-08T20:00:00")
+    station.select_receiver(ReceiverTarget("dead.example", 8073, trusted=True))
+    station.state = "connecting"
+    await pilot.tick()
+    clock.advance(30)
+    await pilot.tick()
+    assert station.target is not None
+    assert station.target.host == "dead.example"
+    clock.advance(40)
+    await pilot.tick()
+    assert station.target.host == "near.example"
