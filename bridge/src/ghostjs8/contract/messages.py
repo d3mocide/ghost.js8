@@ -58,6 +58,7 @@ class ReceiverRef(_Model):
     host: str = Field(min_length=1, max_length=253)
     port: int = Field(default=8073, ge=1, le=65535)
     name: str | None = None
+    tls: bool = False
 
 
 class Limits(_Model):

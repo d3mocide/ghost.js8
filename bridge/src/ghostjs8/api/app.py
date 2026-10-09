@@ -264,7 +264,9 @@ async def _handle(
             return
         log.info("receiver selected: %s:%d", host, msg.receiver.port)
         station.select_receiver(
-            ReceiverTarget(host, msg.receiver.port, msg.password, msg.receiver.name)
+            ReceiverTarget(
+                host, msg.receiver.port, msg.password, msg.receiver.name, tls=msg.receiver.tls
+            )
         )
     else:
         station.disconnect_receiver()

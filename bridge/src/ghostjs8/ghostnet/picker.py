@@ -20,6 +20,16 @@ MIN_SNR_DB = 15  # directory "snr" (HF band average); below this a receiver is m
 DEFAULT_COOLDOWN = timedelta(minutes=30)
 
 
+PROXY_SUFFIX = ".proxy.kiwisdr.com"
+PROXY_GROUP = "proxy.kiwisdr.com"
+
+
+def host_group(host: str) -> str:
+    """Listings that share one machine: every ``*.proxy.kiwisdr.com`` name is the same proxy host."""
+    h = host.lower()
+    return PROXY_GROUP if h.endswith(PROXY_SUFFIX) else h
+
+
 def distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     p1, p2 = math.radians(lat1), math.radians(lat2)
     dp, dl = p2 - p1, math.radians(lon2 - lon1)
@@ -50,13 +60,22 @@ class ReceiverPicker:
         """Skip this receiver until the cooldown expires (it rejected or failed us)."""
         self._benched[listing_id] = now + self._cooldown
 
+    def bench_host(self, host: str, now: datetime) -> None:
+        """Skip every listing on this machine (it was unreachable, so its siblings are too)."""
+        self._benched[f"host:{host_group(host)}"] = now + self._cooldown
+
     def rank(
         self, receivers: Iterable[ReceiverListing], dial_hz: int, now: datetime
     ) -> list[Candidate]:
         self._benched = {k: v for k, v in self._benched.items() if v > now}
         out: list[Candidate] = []
         for r in receivers:
-            if r.id in self._benched or r.lat is None or r.lon is None:
+            if (
+                r.id in self._benched
+                or f"host:{host_group(r.host)}" in self._benched
+                or r.lat is None
+                or r.lon is None
+            ):
                 continue
             if not (r.min_hz <= dial_hz and dial_hz + 3000 <= r.max_hz):
                 continue
@@ -65,4 +84,13 @@ class ReceiverPicker:
             if r.snr_db is not None and r.snr_db < MIN_SNR_DB:
                 continue
             out.append(Candidate(r, distance_km(self.home[0], self.home[1], r.lat, r.lon)))
-        return sorted(out, key=lambda c: (c.distance_km, -(c.listing.snr_db or 0)))
+        # Direct receivers first: a proxied one is only a fallback, and a dead proxy host
+        # takes all of its listings down at once.
+        return sorted(
+            out,
+            key=lambda c: (
+                host_group(c.listing.host) == PROXY_GROUP,
+                c.distance_km,
+                -(c.listing.snr_db or 0),
+            ),
+        )

@@ -994,12 +994,17 @@
             }
           ],
           "default": null
+        },
+        "tls": {
+          "default": false,
+          "type": "boolean"
         }
       },
       "required": [
         "host",
         "name",
-        "port"
+        "port",
+        "tls"
       ],
       "title": "ReceiverRef",
       "type": "object"

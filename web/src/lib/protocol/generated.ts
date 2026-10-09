@@ -108,6 +108,7 @@ export interface ReceiverRef {
   host: string;
   port: number;
   name: string | null;
+  tls: boolean;
 }
 /**
  * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema

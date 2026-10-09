@@ -60,3 +60,23 @@ def test_bench_cooldown() -> None:
     assert [c.listing.id for c in picker.rank(listings, 7_107_000, NOW)] == ["mid"]
     later = NOW + timedelta(minutes=31)
     assert [c.listing.id for c in picker.rank(listings, 7_107_000, later)] == ["near", "mid"]
+
+
+def test_bench_host_skips_proxy_siblings() -> None:
+    picker = ReceiverPicker(HOME)
+    listings = [
+        rx("a", 34.0, -84.0, host="1.proxy.kiwisdr.com"),
+        rx("b", 34.5, -84.0, host="2.proxy.kiwisdr.com"),
+        rx("c", 39.0, -77.0, host="direct.example"),
+    ]
+    picker.bench_host("1.proxy.kiwisdr.com", NOW)
+    assert [c.listing.id for c in picker.rank(listings, 7_107_000, NOW)] == ["c"]
+
+
+def test_direct_receivers_outrank_nearer_proxied_ones() -> None:
+    picker = ReceiverPicker(HOME)
+    listings = [
+        rx("p", 34.0, -84.0, host="1.proxy.kiwisdr.com"),
+        rx("d", 39.0, -77.0, host="direct.example"),
+    ]
+    assert [c.listing.id for c in picker.rank(listings, 7_107_000, NOW)] == ["d", "p"]

@@ -35,7 +35,7 @@ function session(over: Partial<Session> = {}): Session {
     v: 1,
     type: 'session',
     state: 'connected',
-    receiver: { host: 'kiwi.example', port: 8073, name: null },
+    receiver: { host: 'kiwi.example', port: 8073, name: null, tls: false },
     tuning: { dial_hz: 14_078_000, mode: 'usb', low_cut_hz: 100, high_cut_hz: 3000 },
     subscribers: 1,
     reject_reason: null,

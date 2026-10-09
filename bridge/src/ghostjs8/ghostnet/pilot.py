@@ -177,6 +177,9 @@ class GhostNetPilot:
         if self._needs_new_receiver(dial_hz, now):
             if self.listing is not None:
                 self.picker.bench(self.listing.id, now)
+                if self.station.state in ("connecting", "backoff"):
+                    # Never got a session: the host is unreachable, not merely busy.
+                    self.picker.bench_host(self.listing.host, now)
             await self._pick(dial_hz, now)
 
     def _needs_new_receiver(self, dial_hz: int, now: datetime) -> bool:
