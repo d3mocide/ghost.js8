@@ -3,6 +3,7 @@
   import Pill from '../../components/Pill.svelte';
   import { useApp } from '../../lib/state/context';
   import type { ReceiverDirectory } from '../../lib/protocol/generated';
+  import { distanceKm, gridCenter, isProxied } from '../../lib/grid';
 
   const app = useApp();
   let directory = $state<ReceiverDirectory | null>(null);
@@ -10,6 +11,7 @@
   let query = $state('');
   let coversDial = $state<boolean>(true);
   let hideFull = $state<boolean>(true);
+  let hideProxied = $state<boolean>(true);
   let manualHost = $state('');
   let manualPort = $state(8073);
   let manualPassword = $state('');
@@ -22,16 +24,26 @@
   const dial = $derived(app.state.session?.tuning.dial_hz ?? 14_078_000);
   const current = $derived(app.state.session?.receiver ?? null);
 
+  const home = $derived(gridCenter(app.state.ghostnet?.home_grid));
+
   const results = $derived.by(() => {
-    const list = directory?.receivers ?? [];
+    const list = (directory?.receivers ?? []).map((r) => ({
+      ...r,
+      proxied: isProxied(r.host),
+      km:
+        home !== null && r.lat !== null && r.lon !== null ? distanceKm(home, [r.lon, r.lat]) : null,
+    }));
     const q = query.trim().toLowerCase();
     return list
       .filter((r) => !coversDial || (r.min_hz <= dial && dial <= r.max_hz))
       .filter((r) => !hideFull || r.users < r.users_max)
+      .filter((r) => !hideProxied || !r.proxied)
       .filter(
         (r) => !q || `${r.name} ${r.location} ${r.host} ${r.grid ?? ''}`.toLowerCase().includes(q),
       )
-      .sort((a, b) => (b.snr_db ?? -99) - (a.snr_db ?? -99))
+      .sort(
+        (a, b) => (a.km ?? Infinity) - (b.km ?? Infinity) || (b.snr_db ?? -99) - (a.snr_db ?? -99),
+      )
       .slice(0, 60);
   });
 
@@ -46,11 +58,14 @@
     }
   }
 
-  function select(r: { host: string; port: number; name: string | null }, password = ''): void {
+  function select(
+    r: { host: string; port: number; name: string | null; tls?: boolean },
+    password = '',
+  ): void {
     app.send({
       v: 1,
       type: 'select_receiver',
-      receiver: { host: r.host, port: r.port, name: r.name },
+      receiver: { host: r.host, port: r.port, name: r.name, tls: r.tls ?? false },
       password,
     });
   }
@@ -140,6 +155,7 @@
     <div class="filters">
       <label><input type="checkbox" bind:checked={coversDial} /> covers dial</label>
       <label><input type="checkbox" bind:checked={hideFull} /> hide full</label>
+      <label><input type="checkbox" bind:checked={hideProxied} /> hide proxied</label>
     </div>
     {#if loadError}
       <p class="warn">Directory unavailable ({loadError}). Manual entry still works.</p>
@@ -163,12 +179,19 @@
         >
           <span class="name">{r.name}</span>
           <span class="meta mono" id={`rx-${r.id}`}>
-            {r.location || r.host} · {r.users}/{r.users_max} users{r.snr_db !== null
+            {r.location || r.host}{r.km !== null
+              ? ` · ${Math.round(r.km).toLocaleString()} km`
+              : ''} · {r.users}/{r.users_max} users{r.snr_db !== null
               ? ` · SNR ${String(r.snr_db)} dB`
               : ''}
           </span>
         </button>
         {#if full}<Pill tone="warn" label="full" />{/if}
+        {#if r.proxied}<Pill
+            tone="info"
+            label="proxy"
+            title="Behind proxy.kiwisdr.com: all proxied receivers share one host"
+          />{/if}
       </li>
     {:else}
       <li class="muted">{directory ? 'No receivers match.' : 'Loading directory…'}</li>

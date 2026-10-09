@@ -33,3 +33,18 @@ export function gridCenter(grid: string | null | undefined): [number, number] | 
   }
   return [lon + w / 2, lat + h / 2];
 }
+
+/** Great-circle distance in km between two [lon, lat] points. */
+export function distanceKm(a: readonly [number, number], b: readonly [number, number]): number {
+  const rad = Math.PI / 180;
+  const dLat = (b[1] - a[1]) * rad;
+  const dLon = (b[0] - a[0]) * rad;
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** KiwiSDRs behind proxy.kiwisdr.com share one machine, so they fail together. */
+export function isProxied(host: string): boolean {
+  return host.toLowerCase().endsWith('.proxy.kiwisdr.com');
+}
