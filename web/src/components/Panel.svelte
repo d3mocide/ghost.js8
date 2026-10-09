@@ -8,6 +8,7 @@
     actions,
     children,
     flush = false,
+    slim = false,
   }: {
     title: string;
     code: string;
@@ -15,17 +16,19 @@
     actions?: Snippet;
     children: Snippet;
     flush?: boolean;
+    /** Header is visually hidden (still the accessible name): for single-row strips. */
+    slim?: boolean;
   } = $props();
 </script>
 
 <section class="panel" aria-labelledby={`${id}-title`} data-testid={`panel-${id}`}>
-  <header>
+  <header class:sr={slim}>
     <span class="mark" aria-hidden="true"></span>
     <h2 id={`${id}-title`}>{title}</h2>
     <span class="code" aria-hidden="true">{code}</span>
     {#if actions}<div class="actions">{@render actions()}</div>{/if}
   </header>
-  <div class="body" class:flush>
+  <div class="body" class:flush class:slim>
     {@render children()}
   </div>
 </section>
@@ -102,6 +105,12 @@
     color: var(--g-text-dim);
     flex: none;
   }
+  @media (max-width: 720px) {
+    /* Phones: the short code only competes with the title and its actions. */
+    .code {
+      display: none;
+    }
+  }
   .actions {
     margin-left: auto;
     display: flex;
@@ -113,6 +122,19 @@
     min-height: 0;
     flex: 1;
     overflow: auto;
+  }
+  header.sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .body.slim {
+    padding: var(--g-space-3) var(--g-space-4);
   }
   .body.flush {
     padding: 0;

@@ -181,7 +181,7 @@
 
 <style>
   .map {
-    height: clamp(200px, 30vh, 360px);
+    height: clamp(200px, 26vh, 280px);
     background: #060814;
   }
   .count {

@@ -103,19 +103,19 @@
     <main class="grid" class:phone>
       <div class="col controls">
         {#if show('controls')}
+          {#if !phone}<GhostNetPanel />{/if}
           <ReceiverPanel bind:this={receiverPanel} />
-          <TuningPanel />
           <AudioPanel />
         {/if}
       </div>
       <div class="col center">
-        {#if show('waterfall')}<WaterfallPanel />{/if}
-        {#if show('traffic')}<TimelinePanel />{/if}
+        {#if show('traffic')}<div class="fill"><TimelinePanel /></div>{/if}
+        {#if show('waterfall')}<TuningPanel /><WaterfallPanel />{/if}
       </div>
       <div class="col side">
-        {#if show('ghostnet')}<GhostNetPanel />{/if}
-        {#if show('stations')}<StationsPanel />{/if}
+        {#if phone && show('ghostnet')}<GhostNetPanel />{/if}
         {#if show('map')}<MapPanel />{/if}
+        {#if show('stations')}<StationsPanel />{/if}
         {#if show('status')}<StatusPanel />{/if}
       </div>
     </main>
@@ -157,6 +157,26 @@
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     }
   }
+  /* Three columns: the centre column runs down to the foot of the tallest column,
+     so the decoded-traffic panel can fill the space instead of stopping short. */
+  @media (min-width: 1281px) {
+    .col.center {
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+    }
+    /* The traffic panel is taken out of flow, so its row count never sets the page
+       height; it fills what the other columns leave and scrolls inside. */
+    .fill {
+      position: relative;
+      flex: 1;
+      min-height: 320px;
+    }
+    .fill > :global(.panel) {
+      position: absolute;
+      inset: 0;
+    }
+  }
   .grid.phone {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -164,6 +184,10 @@
     grid-template-columns: minmax(0, 1fr);
   }
   .tabs {
+    /* Stays under the sticky top bar so views are one tap away at any scroll depth. */
+    position: sticky;
+    top: 58px;
+    z-index: 40;
     display: flex;
     gap: 2px;
     overflow-x: auto;

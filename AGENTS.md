@@ -147,6 +147,16 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
   bridge-side audio buffering small.
 - `uv` caches builds: if the editable install looks empty after creating new
   package dirs, run `uv sync --reinstall-package ghostjs8`.
+- Every `*.proxy.kiwisdr.com` listing is one machine (`50.116.2.70`). When it refuses
+  connections all ~400 of them fail together, so the picker ranks direct receivers
+  first, `ReceiverPicker.bench_host()` benches the whole group after a connect
+  failure, and the UI hides proxied receivers by default (`isProxied()`).
+- `SelectReceiver.receiver.tls` must be forwarded into `ReceiverTarget`, or
+  HTTPS-only receivers picked in the UI connect over plain `ws`.
+- Desktop layout: left GhostNet/Receiver/Audio; centre Traffic, tuning strip,
+  Waterfall; right Map/Stations/System. `Panel slim` hides the header for strips.
+  No Node on the Pi host: run web checks and Playwright screenshots in
+  `mcr.microsoft.com/playwright:v1.64.0-noble` (mount the repo, `npm ci` in `web/`).
 - GhostNet windows are UTC and live in `ghostnet/schedule.py` `PLAN`. A window in
   progress beats the next window's pre-roll. Any viewer tune/select/disconnect
   calls `station.operator_changed()`, which pauses the autopilot. Keep that hook

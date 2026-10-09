@@ -59,56 +59,61 @@
   }
 </script>
 
-<Panel id="tuning" code="TUNE" title="Tuning">
-  {#snippet actions()}
-    {#if bandFor(tuning.dial_hz)}<span class="band mono">{bandFor(tuning.dial_hz)}</span>{/if}
-  {/snippet}
-  <div class="bands" role="group" aria-label="JS8 band presets">
-    {#each JS8_BANDS as b (b.band)}
-      <button
-        type="button"
-        class="btn"
-        aria-pressed={tuning.dial_hz === b.dialHz}
-        title={`${formatMHz(b.dialHz)} MHz${b.dialHz > 32_000_000 ? ' (beyond most KiwiSDRs)' : ''}`}
-        onclick={() => {
-          tune({ dial_hz: b.dialHz, mode: 'usb' });
-        }}>{b.band}</button
-      >
-    {/each}
-  </div>
+<Panel id="tuning" code="TUNE" title="Tuning" slim>
+  <div class="strip">
+    <div class="bands" role="group" aria-label="JS8 band presets">
+      {#each JS8_BANDS as b (b.band)}
+        <button
+          type="button"
+          class="btn"
+          aria-pressed={tuning.dial_hz === b.dialHz}
+          title={`${formatMHz(b.dialHz)} MHz${b.dialHz > 32_000_000 ? ' (beyond most KiwiSDRs)' : ''}`}
+          onclick={() => {
+            tune({ dial_hz: b.dialHz, mode: 'usb' });
+          }}>{b.band}</button
+        >
+      {/each}
+    </div>
 
-  <form onsubmit={submit} class="manual">
-    <label class="field"
-      >Dial (kHz)
-      <input class="input" inputmode="decimal" bind:value={dialKHz} aria-describedby="tune-help" />
-    </label>
-    <fieldset class="mode">
-      <legend class="field">Mode</legend>
-      <label><input type="radio" bind:group={mode} value="usb" /> USB</label>
-      <label><input type="radio" bind:group={mode} value="lsb" /> LSB</label>
-    </fieldset>
-    <label class="field"
-      >Low cut (Hz) <input
-        class="input"
-        type="number"
-        min="0"
-        max="6000"
-        step="50"
-        bind:value={low}
-      /></label
-    >
-    <label class="field"
-      >High cut (Hz) <input
-        class="input"
-        type="number"
-        min="0"
-        max="6000"
-        step="50"
-        bind:value={high}
-      /></label
-    >
-    <button type="submit" class="btn primary">Apply</button>
-  </form>
+    <form onsubmit={submit} class="manual" aria-describedby="tune-help">
+      <label class="field"
+        >Dial (kHz)
+        <input
+          class="input dial"
+          inputmode="decimal"
+          bind:value={dialKHz}
+          aria-describedby="tune-help"
+        />
+      </label>
+      <fieldset class="mode">
+        <legend class="field">Mode</legend>
+        <label><input type="radio" bind:group={mode} value="usb" /> USB</label>
+        <label><input type="radio" bind:group={mode} value="lsb" /> LSB</label>
+      </fieldset>
+      <label class="field"
+        >Low (Hz) <input
+          class="input cut"
+          type="number"
+          min="0"
+          max="6000"
+          step="50"
+          bind:value={low}
+        /></label
+      >
+      <label class="field"
+        >High (Hz) <input
+          class="input cut"
+          type="number"
+          min="0"
+          max="6000"
+          step="50"
+          bind:value={high}
+        /></label
+      >
+      <button type="submit" class="btn primary">Apply</button>
+    </form>
+    {#if bandFor(tuning.dial_hz)}<span class="band mono">{bandFor(tuning.dial_hz)}</span>{/if}
+  </div>
   <p id="tune-help" class="help">
     Tuning is shared by everyone watching this station. JS8 lives at the dial + 0–3 kHz (USB).
   </p>
@@ -116,33 +121,44 @@
 </Panel>
 
 <style>
+  .strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--g-space-3) var(--g-space-4);
+  }
   .band {
     padding: 2px 8px;
     border-radius: var(--g-radius-pill);
     background: var(--g-accent-soft);
     color: var(--g-text);
     font-size: var(--g-text-xs);
+    align-self: center;
   }
   .bands {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(3.4rem, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: var(--g-space-4);
   }
   .bands .btn {
     min-height: 32px;
-    padding: 0;
+    min-width: 3.2rem;
+    padding: 0 6px;
     font-family: var(--g-font-mono);
     font-size: var(--g-text-xs);
     font-weight: 600;
   }
   .manual {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-wrap: wrap;
     gap: var(--g-space-3);
     align-items: end;
-    padding-top: var(--g-space-4);
-    border-top: 1px solid var(--g-hairline);
+  }
+  .dial {
+    width: 8.5rem;
+  }
+  .cut {
+    width: 5.5rem;
   }
   .mode {
     border: 0;
@@ -164,10 +180,58 @@
     gap: var(--g-space-1);
     white-space: nowrap;
   }
+  @media (max-width: 720px) {
+    .strip {
+      gap: var(--g-space-3);
+    }
+    .bands {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      width: 100%;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .bands .btn {
+      flex: none;
+    }
+    .manual {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      align-items: end;
+    }
+    .manual .dial,
+    .manual .cut {
+      width: 100%;
+    }
+    .manual :global(.field:first-child) {
+      grid-column: 1 / 3;
+    }
+    .mode {
+      grid-column: 3;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+      min-height: 0;
+    }
+    .mode legend {
+      float: none;
+    }
+    .manual .btn.primary {
+      width: 100%;
+    }
+    .band {
+      display: none; /* the hero already shows the band */
+    }
+  }
   .help {
-    color: var(--g-text-muted);
-    font-size: var(--g-text-xs);
-    margin: var(--g-space-3) 0 0;
+    /* Kept for assistive tech; the strip stays one row. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    margin: 0;
   }
   .error {
     color: var(--g-alert);

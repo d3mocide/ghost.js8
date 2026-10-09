@@ -49,9 +49,9 @@
     aria-live="polite"
   >
     <Pill tone={s.tone} label={s.headline} />
-    <p>{s.detail}</p>
+    <p class:quiet={s.tone === 'ok'}>{s.detail}</p>
     {#if s.suggestSwitch}
-      <button type="button" class="btn primary" onclick={onSwitch}>Switch receiver</button>
+      <button type="button" class="btn primary" onclick={onSwitch}>Choose receiver</button>
     {/if}
   </div>
 
@@ -207,6 +207,21 @@
     .stats div {
       flex: 1;
       min-width: 0;
+      padding: var(--g-space-2);
+    }
+    .stats dt {
+      font-size: 10px;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* Healthy state: the headline pill says it all; keep prose for warnings. */
+    .situation p.quiet {
+      display: none;
+    }
+    .situation {
+      gap: var(--g-space-2);
     }
   }
 </style>
