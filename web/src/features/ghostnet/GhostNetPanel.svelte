@@ -29,6 +29,9 @@
     const b = Date.parse(target.end);
     return b > a ? Math.min(1, Math.max(0, (app.now - a) / (b - a))) : 0;
   });
+  const countLabel = $derived(
+    inWindow && started ? 'left on air' : inWindow ? 'pre-roll, on air in' : 'until next net',
+  );
   const hhmm = (iso: string): string => `${utcTime(iso, false)}Z`;
   // "nearest free receiver: 283 km, SNR 26 dB" -> "283 km away, SNR 26 dB"
   const receiverNote = $derived(
@@ -96,10 +99,7 @@
               {countdown(app.now, Date.parse(target.start))}
             {/if}
           </strong>
-          <span class="count-label">
-            {#if inWindow && started}left on air{:else if inWindow}pre-roll, on air in{:else}until
-              next net{/if}
-          </span>
+          <span class="count-label">{countLabel}</span>
         </div>
         {#if inWindow && started}
           <div
