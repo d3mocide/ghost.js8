@@ -80,3 +80,18 @@ def test_direct_receivers_outrank_nearer_proxied_ones() -> None:
         rx("d", 39.0, -77.0, host="direct.example"),
     ]
     assert [c.listing.id for c in picker.rank(listings, 7_107_000, NOW)] == ["d", "p"]
+
+
+def test_proven_receivers_outrank_nearer_untried_ones() -> None:
+    picker = ReceiverPicker(HOME)
+    listings = [rx("near", 34.0, -84.0), rx("good", 39.0, -77.0)]
+    picker.mark_proven("good", NOW)
+    assert [c.listing.id for c in picker.rank(listings, 7_107_000, NOW)] == ["good", "near"]
+    # A proven receiver that later fails loses its standing.
+    picker.bench("good", NOW)
+    picker.mark_proven("good", NOW + timedelta(hours=1))  # cooldown over, proven again
+    later = NOW + timedelta(hours=2)
+    assert [c.listing.id for c in picker.rank(listings, 7_107_000, later)] == ["good", "near"]
+    # ...but not once the proof is a day old.
+    much_later = NOW + timedelta(hours=30)
+    assert [c.listing.id for c in picker.rank(listings, 7_107_000, much_later)] == ["near", "good"]

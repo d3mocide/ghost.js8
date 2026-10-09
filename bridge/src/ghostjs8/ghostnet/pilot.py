@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Literal
 
 from ghostjs8.contract.messages import GhostNet, GhostNetWindow, NetSummary, ReceiverListing
-from ghostjs8.ghostnet.picker import Candidate, ReceiverPicker
+from ghostjs8.ghostnet.picker import NO_AUDIO_COOLDOWN, Candidate, ReceiverPicker
 from ghostjs8.ghostnet.recorder import NetRecorder, prune_recordings
 from ghostjs8.ghostnet.schedule import GHOSTNET_40M_HZ, Occurrence, Region, active, upcoming
 from ghostjs8.receivers.base import Tuning
@@ -38,6 +38,8 @@ log = logging.getLogger("ghostjs8.ghostnet.pilot")
 
 Mode = Literal["off", "window", "parked", "paused"]
 TICK_S = 5.0
+#: Audio must flow this long before a receiver counts as proven.
+PROVEN_AFTER = timedelta(seconds=60)
 PRUNE_EVERY = timedelta(hours=1)
 
 
@@ -100,6 +102,7 @@ class GhostNetPilot:
         self.reason = ""
         self.detail = ""
         self._selected_at: datetime | None = None
+        self._connected_since: datetime | None = None
         self._last_status: str | None = None
         self._last_prune: datetime | None = None
         station.operator_action.append(self.operator_took_control)
@@ -174,17 +177,66 @@ class GhostNetPilot:
         st = self.station
         if st.tuning.dial_hz != dial_hz or st.tuning.mode != "usb":
             await st.tune(Tuning(dial_hz=dial_hz, mode="usb", low_cut_hz=100, high_cut_hz=3000))
+        await self._adopt_working_receiver(dial_hz, now)
+        self._note_health(now)
         if self._needs_new_receiver(dial_hz, now):
             if self.listing is not None:
-                self.picker.bench(self.listing.id, now)
+                if "no audio" in self.station.detail:
+                    # Connected but silent: broken, not busy. Leave it alone for hours.
+                    self.picker.bench(self.listing.id, now, NO_AUDIO_COOLDOWN)
+                else:
+                    self.picker.bench(self.listing.id, now)
                 if self.station.state in ("connecting", "backoff"):
                     # Never got a session: the host is unreachable, not merely busy.
                     self.picker.bench_host(self.listing.host, now)
             await self._pick(dial_hz, now)
 
+    async def _adopt_working_receiver(self, dial_hz: int, now: datetime) -> None:
+        """Take over a receiver someone else chose, once it is demonstrably working.
+
+        A viewer's pick (or the operator's boot target) that is delivering audio is
+        never worth replacing with the "nearest" one: swapping a live feed for an
+        untried listing is how a good session ended up on a dead receiver.
+        """
+        st = self.station
+        t = st.target
+        if t is None or st.state != "connected":
+            return
+        ours = self.listing
+        if ours is not None and (ours.host, ours.port) == (t.host, t.port):
+            return
+        try:
+            directory = await self.directory.get()
+        except Exception:
+            return
+        found = next((r for r in directory.receivers if (r.host, r.port) == (t.host, t.port)), None)
+        if found is not None and found.min_hz <= dial_hz <= found.max_hz:
+            self.listing = found
+            self.reason = "keeping the receiver you chose"
+            self.detail = ""
+            self._selected_at = now
+            if self.recorder is not None:
+                self.recorder.set_receiver(f"{found.name} ({found.host}:{found.port})", self.reason)
+
+    def _note_health(self, now: datetime) -> None:
+        """Remember receivers that have streamed audio steadily, so they are preferred."""
+        st = self.station
+        if st.state != "connected" or self.listing is None:
+            self._connected_since = None
+            return
+        if self._connected_since is None:
+            self._connected_since = now
+        elif now - self._connected_since >= PROVEN_AFTER:
+            self.picker.mark_proven(self.listing.id, now)
+
     def _needs_new_receiver(self, dial_hz: int, now: datetime) -> bool:
         st = self.station
         ours = self.listing
+        if st.state == "connected" and st.target is not None:
+            if ours is None or (ours.host, ours.port) != (st.target.host, st.target.port):
+                return False  # a feed we did not choose that works (unknown coverage): keep it
+            if ours.min_hz <= dial_hz <= ours.max_hz:
+                return False  # a working receiver is never worth replacing
         if (
             st.target is None
             or ours is None

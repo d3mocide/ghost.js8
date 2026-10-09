@@ -157,6 +157,11 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
   Waterfall; right Map/Stations/System. `Panel slim` hides the header for strips.
   No Node on the Pi host: run web checks and Playwright screenshots in
   `mcr.microsoft.com/playwright:v1.64.0-noble` (mount the repo, `npm ci` in `web/`).
+- The autopilot never replaces a receiver that is `connected` and covers the dial,
+  even one a viewer chose (`_adopt_working_receiver`): swapping a live feed for the
+  "nearest" untried listing put a good session on a dead receiver. Receivers that
+  stay silent ("no audio") are benched for 6 h, and ones that streamed for a minute
+  are "proven" and ranked ahead of untried ones for 24 h (in memory: lost on restart).
 - GhostNet windows are UTC and live in `ghostnet/schedule.py` `PLAN`. A window in
   progress beats the next window's pre-roll. Any viewer tune/select/disconnect
   calls `station.operator_changed()`, which pauses the autopilot. Keep that hook

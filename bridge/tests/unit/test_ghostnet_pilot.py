@@ -10,6 +10,7 @@ import pytest
 from ghostjs8.api.hub import Hub
 from ghostjs8.contract.messages import GhostNet, server_message_adapter
 from ghostjs8.decoders.base import DecodeEvent, DecoderSink
+from ghostjs8.ghostnet.picker import NO_AUDIO_COOLDOWN
 from ghostjs8.ghostnet.pilot import GhostNetPilot, PilotConfig, net_id
 from ghostjs8.ghostnet.schedule import Region
 from ghostjs8.receivers.directory import Directory
@@ -227,3 +228,44 @@ async def test_before_preroll_is_parked(tmp_path: Path, start: str) -> None:
     assert pilot.status().next_window is not None
     assert pilot.status().next_window.start == at("2026-10-09T01:00:00")  # type: ignore[union-attr]
     assert timedelta(minutes=10) == pilot.config.preroll
+
+
+async def test_working_receiver_chosen_by_a_viewer_is_kept_after_the_pause(tmp_path: Path) -> None:
+    from ghostjs8.session.station import ReceiverTarget  # noqa: PLC0415
+
+    pilot, station, clock, _ = make(tmp_path, "2026-10-08T20:00:00")
+    await pilot.tick()
+    assert station.target is not None
+    assert station.target.host == "near.example"  # the autopilot's own pick
+
+    station.select_receiver(ReceiverTarget("mid.example", 8073))  # a viewer chooses another
+    station.state = "connected"
+    station.operator_changed()
+    assert pilot.mode == "paused"
+
+    clock.advance(5 * 3600)  # past the pause: the next net's pre-roll is under way
+    await pilot.tick()
+    assert pilot.mode == "window"
+    assert station.target is not None
+    assert station.target.host == "mid.example"  # not swapped for the "nearest" one
+    assert pilot.listing is not None
+    assert pilot.listing.id == "mid"
+
+
+async def test_silent_receiver_is_benched_for_hours_not_minutes(tmp_path: Path) -> None:
+    pilot, station, clock, _ = make(tmp_path, "2026-10-08T20:00:00")
+    await pilot.tick()
+    assert station.target is not None
+    assert station.target.host == "near.example"
+    station.state = "backoff"
+    station.detail = "no audio within 15s of connecting"
+    clock.advance(61)
+    await pilot.tick()
+    assert station.target.host == "mid.example"
+
+    clock.advance(2 * 3600)  # long past the default 30-minute bench
+    station.state = "rejected"
+    station.detail = ""
+    await pilot.tick()
+    assert station.target.host == "far.example"  # near.example is still benched
+    assert timedelta(hours=2) < NO_AUDIO_COOLDOWN

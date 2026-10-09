@@ -18,6 +18,10 @@ from ghostjs8.contract.messages import ReceiverListing
 EARTH_RADIUS_KM = 6371.0
 MIN_SNR_DB = 15  # directory "snr" (HF band average); below this a receiver is mostly noise
 DEFAULT_COOLDOWN = timedelta(minutes=30)
+#: A receiver that connected but never sent audio is broken, not busy: leave it alone for hours.
+NO_AUDIO_COOLDOWN = timedelta(hours=6)
+#: Receivers that gave us audio recently are preferred over untried ones.
+PROVEN_TTL = timedelta(hours=24)
 
 
 PROXY_SUFFIX = ".proxy.kiwisdr.com"
@@ -55,10 +59,20 @@ class ReceiverPicker:
         self.home = home
         self._cooldown = cooldown
         self._benched: dict[str, datetime] = {}
+        self._proven: dict[str, datetime] = {}
 
-    def bench(self, listing_id: str, now: datetime) -> None:
+    def bench(self, listing_id: str, now: datetime, cooldown: timedelta | None = None) -> None:
         """Skip this receiver until the cooldown expires (it rejected or failed us)."""
-        self._benched[listing_id] = now + self._cooldown
+        self._benched[listing_id] = now + (cooldown or self._cooldown)
+        self._proven.pop(listing_id, None)
+
+    def mark_proven(self, listing_id: str, now: datetime) -> None:
+        """This receiver has delivered audio for a while: prefer it next time."""
+        self._proven[listing_id] = now
+
+    def is_proven(self, listing_id: str, now: datetime) -> bool:
+        seen = self._proven.get(listing_id)
+        return seen is not None and now - seen < PROVEN_TTL
 
     def bench_host(self, host: str, now: datetime) -> None:
         """Skip every listing on this machine (it was unreachable, so its siblings are too)."""
@@ -90,6 +104,7 @@ class ReceiverPicker:
             out,
             key=lambda c: (
                 host_group(c.listing.host) == PROXY_GROUP,
+                not self.is_proven(c.listing.id, now),
                 c.distance_km,
                 -(c.listing.snr_db or 0),
             ),
