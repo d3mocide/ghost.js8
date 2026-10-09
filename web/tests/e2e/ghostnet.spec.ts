@@ -10,7 +10,7 @@ test.describe('GhostNet', () => {
     const panel = page.getByTestId('panel-ghostnet');
     await expect(panel).toContainText(/WATCHING 7\.107|ON NET/, { timeout: 20_000 });
     await expect(panel).toContainText('North America');
-    await expect(panel).toContainText(/next in|ends in|starts in/);
+    await expect(panel).toContainText(/until next net|left on air|on air in/);
     await expect(page.getByTestId('net-link').first()).toContainText('GhostNet North America');
   });
 
