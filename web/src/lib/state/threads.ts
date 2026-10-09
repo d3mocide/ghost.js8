@@ -8,6 +8,7 @@
  * decoder, and a frame the decoder missed shows as a gap marker.
  */
 import type { DecodeRow } from './state';
+import { isNoiseFrame } from '../traffic';
 
 /** Frames more than this many hertz apart are different stations. */
 export const OFFSET_TOLERANCE_HZ = 15;
@@ -78,6 +79,7 @@ export function groupThreads(rows: readonly DecodeRow[]): TrafficItem[] {
       items.push([Number.isNaN(ms) ? 0 : ms, { kind: 'single', key: row.key, row }]);
       continue;
     }
+    const noise = isNoiseFrame(row.text);
     const slotMs = slotSeconds(row.speed) * 1000;
     let best: Open | null = null;
     for (const t of open) {
@@ -90,6 +92,7 @@ export function groupThreads(rows: readonly DecodeRow[]): TrafficItem[] {
       )
         best = t;
     }
+    if (best === null && noise) continue; // an undecodable frame with no thread to belong to
     if (best === null) {
       best = {
         key: `thread:${row.key}`,
@@ -108,7 +111,14 @@ export function groupThreads(rows: readonly DecodeRow[]): TrafficItem[] {
       best.gaps += 1;
       best.parts.push(GAP_MARK);
     }
-    best.parts.push(row.text);
+    if (noise) {
+      if (best.parts.at(-1) !== GAP_MARK) {
+        best.parts.push(GAP_MARK);
+        best.gaps += 1;
+      }
+    } else {
+      best.parts.push(row.text);
+    }
     best.frames += 1;
     best.offset = row.offset_hz;
     best.lastUtc = row.utc;

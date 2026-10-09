@@ -13,6 +13,7 @@
   import MapPanel from '../features/map/MapPanel.svelte';
   import GhostNetPanel from '../features/ghostnet/GhostNetPanel.svelte';
   import NetLogView from '../features/ghostnet/NetLogView.svelte';
+  import { selection } from '../lib/state/selection.svelte';
   import FlashAlert from '../features/ghostnet/FlashAlert.svelte';
   import { netIdFromHash } from '../lib/ghostnet';
 
@@ -34,6 +35,12 @@
   let phone = $state(false);
   let hash = $state(typeof window === 'undefined' ? '' : window.location.hash);
   const netId = $derived(netIdFromHash(hash));
+
+  // A callsign picked anywhere opens its history in the Heard stations card; on a phone
+  // that card lives on its own tab.
+  $effect(() => {
+    if (selection.call && phone) tab = 'stations';
+  });
 
   const show = (t: Tab): boolean => !phone || tab === t;
 
@@ -177,7 +184,8 @@
       position: absolute;
       inset: 0;
     }
-    .fill-side :global(.scroll) {
+    .fill-side :global(.scroll),
+    .fill-side :global(.detail .log) {
       max-height: none;
     }
   }

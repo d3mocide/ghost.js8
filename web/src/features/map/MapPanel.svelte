@@ -3,6 +3,8 @@
   import { useApp } from '../../lib/state/context';
   import { mappableStations } from '../../lib/state/state';
   import { distanceKm, gridCenter, normalizeGrid } from '../../lib/grid';
+  import { selection } from '../../lib/state/selection.svelte';
+  import { talkLinks } from '../../lib/traffic';
   import { bearingDeg, compass, greatCircle, nightPolygon, ring } from '../../lib/geo';
   import type { Map as MapLibreMap, GeoJSONSource } from 'maplibre-gl';
   import type { Feature, FeatureCollection } from 'geojson';
@@ -18,8 +20,10 @@
   const minute = $derived(Math.floor(app.now / 60_000)); // ages and the night shade move per minute
   const RINGS_KM = [500, 1000, 2000] as const;
   const LEGEND =
-    'Your location is the yellow marker. Colour is SNR (violet weak, aqua strong) and fades with age. Dashed rings are 500, 1,000 and 2,000 km. Shaded is night. Click a station for distance and bearing.';
+    'Your location is the yellow marker. Colour is SNR (violet weak, aqua strong) and fades with age. Dashed rings are 500, 1,000 and 2,000 km. Shaded is night. Violet lines join stations that exchanged directed messages. Click a station for distance, bearing and history.';
   const HOME_ZOOM = 2.6;
+  const TALK_WINDOW_MS = 2 * 3_600_000; // who has been talking to whom, last two hours
+  let showLinks = $state(true);
   let userMoved = false;
   let framed = false;
 
@@ -47,6 +51,25 @@
           } satisfies Feature,
         ];
       }),
+    };
+  }
+
+  function talkGeoJson(): FeatureCollection {
+    const now = minute * 60_000;
+    const locate = (call: string): [number, number] | null =>
+      gridCenter(app.state.stations[call]?.grid);
+    return {
+      type: 'FeatureCollection',
+      features: talkLinks(app.state.decodes, locate, now, TALK_WINDOW_MS).map((l) => ({
+        type: 'Feature',
+        properties: {
+          from: l.from,
+          to: l.to,
+          count: l.count,
+          age: Math.max(0, Math.round((now - l.lastMs) / 60_000)),
+        },
+        geometry: { type: 'LineString', coordinates: greatCircle(l.path[0], l.path[1], 24) },
+      })),
     };
   }
 
@@ -182,6 +205,7 @@
               night: { type: 'geojson', data: nightGeoJson() },
               rings: { type: 'geojson', data: ringsGeoJson() },
               link: { type: 'geojson', data: empty() },
+              talk: { type: 'geojson', data: talkGeoJson() },
               stations: { type: 'geojson', data: stationGeoJson() },
               home: { type: 'geojson', data: homeGeoJson() },
             },
@@ -219,6 +243,17 @@
                   'line-color': 'rgba(252,211,77,0.28)',
                   'line-width': 1,
                   'line-dasharray': [2, 3],
+                },
+              },
+              {
+                id: 'talk',
+                type: 'line',
+                source: 'talk',
+                layout: { 'line-cap': 'round' },
+                paint: {
+                  'line-color': '#c4b5fd',
+                  'line-width': ['interpolate', ['linear'], ['get', 'count'], 1, 1.2, 10, 3.5],
+                  'line-opacity': ['interpolate', ['linear'], ['get', 'age'], 0, 0.85, 120, 0.2],
                 },
               },
               {
@@ -323,7 +358,23 @@
               : null,
             props.age !== undefined ? `${String(props.age)} min ago` : null,
           ].filter((x): x is string => x !== null);
-          popup.setLngLat(at).setText(bits.join(' · ')).addTo(m);
+          const box = document.createElement('div');
+          const text = document.createElement('div');
+          text.textContent = bits.join(' · ');
+          box.append(text);
+          if (props.callsign) {
+            const call = props.callsign;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'popup-history';
+            btn.textContent = 'History →';
+            btn.addEventListener('click', () => {
+              selection.open(call);
+              popup.remove();
+            });
+            box.append(btn);
+          }
+          popup.setLngLat(at).setDOMContent(box).addTo(m);
           void m.getSource<GeoJSONSource>('link')?.setData(linkGeoJson(at));
         });
         m.on('mouseenter', 'dots', () => {
@@ -356,6 +407,13 @@
   $effect(() => {
     const data = stationGeoJson();
     void map?.getSource<GeoJSONSource>('stations')?.setData(data);
+  });
+  $effect(() => {
+    const talk = talkGeoJson();
+    void map?.getSource<GeoJSONSource>('talk')?.setData(talk);
+  });
+  $effect(() => {
+    map?.setLayoutProperty('talk', 'visibility', showLinks ? 'visible' : 'none');
   });
   $effect(() => {
     const night = nightGeoJson();
@@ -396,6 +454,13 @@
       <button type="button" class="btn ghost" onclick={goHome} disabled={!home || !map}>Home</button
       >
       <button type="button" class="btn ghost" onclick={fitAll} disabled={!map}>Fit all</button>
+      <button
+        type="button"
+        class="btn ghost"
+        aria-pressed={showLinks}
+        title="Lines between stations that exchanged directed messages in the last two hours"
+        onclick={() => (showLinks = !showLinks)}>Links</button
+      >
     </div>
   </div>
   {#if failed}<p class="error">Map unavailable: {failed}</p>{/if}
@@ -447,6 +512,19 @@
     border: 1px solid var(--g-border-strong);
     border-radius: var(--g-radius-m);
     box-shadow: var(--g-shadow);
+  }
+  :global(.maplibregl-popup .popup-history) {
+    display: block;
+    margin-top: 4px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: var(--g-accent-a);
+    cursor: pointer;
+  }
+  :global(.maplibregl-popup .popup-history:hover) {
+    text-decoration: underline;
   }
   :global(.maplibregl-popup .maplibregl-popup-tip) {
     display: none;

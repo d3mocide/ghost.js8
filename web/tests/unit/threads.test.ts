@@ -66,4 +66,18 @@ describe('groupThreads', () => {
     const items = groupThreads([row(0, 900, 'OLD'), row(40, 1500, 'NEW')]);
     expect(items[0]?.kind === 'thread' && items[0].text).toBe('NEW');
   });
+
+  it('turns undecodable frames into one gap marker and never starts a thread from them', () => {
+    const items = groupThreads([
+      row(0, 700, '……'),
+      row(10, 1000, 'HELLO'),
+      row(25, 1000, '……'),
+      row(40, 1000, '…'),
+      row(55, 1000, 'WORLD'),
+    ]);
+    expect(items).toHaveLength(1);
+    const t = items[0];
+    expect(t?.kind === 'thread' && t.text).toBe(`HELLO ${GAP_MARK} WORLD`);
+    expect(t?.kind === 'thread' && t.gaps).toBe(1);
+  });
 });

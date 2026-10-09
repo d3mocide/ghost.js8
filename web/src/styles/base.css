@@ -236,3 +236,7 @@ input[type='range'] {
   color: var(--g-text-muted);
   background: rgb(255 255 255 / 0.05);
 }
+.chip.spd {
+  color: var(--g-warn);
+  background: rgb(252 211 77 / 0.1);
+}

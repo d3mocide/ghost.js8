@@ -3,6 +3,8 @@
   import { useApp } from '../../lib/state/context';
   import { stationList } from '../../lib/state/state';
   import { ago, formatSnr } from '../../lib/format';
+  import { selection } from '../../lib/state/selection.svelte';
+  import StationDetail from './StationDetail.svelte';
   import { distanceKm, gridCenter } from '../../lib/grid';
 
   const app = useApp();
@@ -16,9 +18,21 @@
 
 <Panel id="stations" code="HRD" title="Heard stations" flush>
   {#snippet actions()}
-    <span class="count mono">{stations.length}</span>
+    {#if selection.call}
+      <button
+        type="button"
+        class="btn ghost back"
+        onclick={() => {
+          selection.close();
+        }}>← All stations</button
+      >
+    {:else}
+      <span class="count mono">{stations.length}</span>
+    {/if}
   {/snippet}
-  {#if stations.length === 0}
+  {#if selection.call}
+    <StationDetail />
+  {:else if stations.length === 0}
     <p class="empty">No stations heard yet.</p>
   {:else}
     <div class="scroll">
@@ -35,7 +49,16 @@
         <tbody>
           {#each stations as s (s.callsign)}
             <tr data-testid="station-row">
-              <th scope="row" class="mono call">{s.callsign}</th>
+              <th scope="row" class="mono call">
+                <button
+                  type="button"
+                  class="callbtn"
+                  title={`History for ${s.callsign}`}
+                  onclick={() => {
+                    selection.open(s.callsign);
+                  }}>{s.callsign}</button
+                >
+              </th>
               <td class="mono">{ago(s.last_heard_utc, app.now)}</td>
               <td class="mono num">{formatSnr(s.snr_db)}</td>
               <td class="mono">{s.grid ?? '—'}</td>
@@ -98,6 +121,22 @@
   }
   tr > :last-child {
     padding-right: var(--g-space-4);
+  }
+  .back {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: var(--g-text-xs);
+  }
+  .callbtn {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+  .callbtn:hover {
+    text-decoration: underline;
   }
   .call {
     color: var(--g-accent-a);

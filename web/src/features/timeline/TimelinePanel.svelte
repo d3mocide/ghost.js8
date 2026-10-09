@@ -4,6 +4,8 @@
   import { formatSnr, utcTime } from '../../lib/format';
   import { classify } from '../../lib/ghostnet';
   import { groupThreads } from '../../lib/state/threads';
+  import { selection } from '../../lib/state/selection.svelte';
+  import { isNoiseFrame, speedChip } from '../../lib/traffic';
   import { loadTrafficPrefs, saveTrafficPrefs } from '../../lib/traffic-prefs';
 
   const app = useApp();
@@ -14,7 +16,11 @@
     saveTrafficPrefs({ directedOnly, threaded });
   });
   const rows = $derived(
-    [...app.state.decodes].reverse().filter((d) => !directedOnly || d.kind === 'directed'),
+    [...app.state.decodes]
+      .reverse()
+      // Frames the decoder heard but could not read (just "…") are noise in the list.
+      .filter((d) => !(d.kind === 'activity' && isNoiseFrame(d.text)))
+      .filter((d) => !directedOnly || d.kind === 'directed'),
   );
   // Threads stitch each station's activity frames (same audio offset, one per slot).
   const threads = $derived(
@@ -135,8 +141,15 @@
           <span class="text mono"
             >{#if tags.flash}<span class="chip alert">FLASH</span>{/if}{#if tags.ghostnet}<span
                 class="chip gn">{tags.regional ?? 'GN'}</span
-              >{/if}{#if d.from_call && d.text.startsWith(`${d.from_call}:`)}<span class="from"
-                >{d.from_call}</span
+              >{/if}{#if speedChip(d.speed)}<span class="chip spd" title={`JS8 ${d.speed} speed`}
+                >{speedChip(d.speed)}</span
+              >{/if}{#if d.from_call && d.text.startsWith(`${d.from_call}:`)}<button
+                type="button"
+                class="from"
+                title={`History for ${d.from_call}`}
+                onclick={() => {
+                  if (d.from_call) selection.open(d.from_call);
+                }}>{d.from_call}</button
               >{d.text.slice(d.from_call.length)}{:else}{d.text}{/if}</span
           >
         </li>
@@ -228,8 +241,16 @@
     overflow-wrap: anywhere;
   }
   .from {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
     color: var(--g-accent-a);
     font-weight: 600;
+    cursor: pointer;
+  }
+  .from:hover {
+    text-decoration: underline;
   }
   @keyframes acquire {
     from {
