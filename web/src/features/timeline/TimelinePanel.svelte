@@ -3,11 +3,26 @@
   import { useApp } from '../../lib/state/context';
   import { formatSnr, utcTime } from '../../lib/format';
   import { classify } from '../../lib/ghostnet';
+  import { groupThreads } from '../../lib/state/threads';
+  import { loadTrafficPrefs, saveTrafficPrefs } from '../../lib/traffic-prefs';
 
   const app = useApp();
-  let directedOnly = $state(false);
+  const prefs = loadTrafficPrefs();
+  let directedOnly = $state(prefs.directedOnly);
+  let threaded = $state(prefs.threaded);
+  $effect(() => {
+    saveTrafficPrefs({ directedOnly, threaded });
+  });
   const rows = $derived(
     [...app.state.decodes].reverse().filter((d) => !directedOnly || d.kind === 'directed'),
+  );
+  // Threads stitch each station's activity frames (same audio offset, one per slot).
+  const threads = $derived(
+    threaded
+      ? groupThreads(app.state.decodes).filter(
+          (i) => !directedOnly || (i.kind === 'single' && i.row.kind === 'directed'),
+        )
+      : [],
   );
 
   // Throttled screen-reader announcements: at most one every 10 s.
@@ -33,6 +48,15 @@
     <button
       type="button"
       class="btn ghost"
+      aria-pressed={threaded}
+      title="Join each station's frames into one running line"
+      onclick={() => (threaded = !threaded)}
+    >
+      Threads
+    </button>
+    <button
+      type="button"
+      class="btn ghost"
       aria-pressed={directedOnly}
       onclick={() => (directedOnly = !directedOnly)}
     >
@@ -44,6 +68,51 @@
     <p class="empty">
       No traffic copied yet. Decodes appear here every 15-second cycle when JS8 is heard.
     </p>
+  {:else if threaded}
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region must be keyboard-reachable) -->
+    <ol
+      class="list"
+      data-testid="timeline"
+      tabindex="0"
+      aria-label="Traffic by station, newest first"
+    >
+      {#each threads as item (item.key)}
+        {#if item.kind === 'thread'}
+          {@const tags = classify(item.text)}
+          <li
+            class="row"
+            class:flash={tags.flash}
+            class:gn={tags.ghostnet}
+            data-testid="thread-row"
+          >
+            <time class="t mono" datetime={item.lastUtc}>{utcTime(item.lastUtc)}Z</time>
+            <span class="snr mono num" title="Latest SNR, dB">{formatSnr(item.snr_db)}</span>
+            <span class="off mono num" title="Audio offset, Hz">{item.offset_hz}</span>
+            <span class="kind">
+              <span
+                class="chip act"
+                title={`${String(item.frames)} frame${item.frames === 1 ? '' : 's'}${item.gaps ? `, ${String(item.gaps)} missed` : ''}`}
+                >×{item.frames}</span
+              >
+            </span>
+            <span class="text mono"
+              >{#if tags.flash}<span class="chip alert">FLASH</span>{/if}{#if tags.ghostnet}<span
+                  class="chip gn">{tags.regional ?? 'GN'}</span
+                >{/if}{item.text}</span
+            >
+          </li>
+        {:else if item.kind === 'single'}
+          {@const d = item.row}
+          <li class="row {d.kind}" data-testid="decode-row">
+            <time class="t mono" datetime={d.utc}>{utcTime(d.utc)}Z</time>
+            <span class="snr mono num">{formatSnr(d.snr_db)}</span>
+            <span class="off mono num">{d.offset_hz}</span>
+            <span class="kind"><span class="chip dir">DIR</span></span>
+            <span class="text mono">{d.text}</span>
+          </li>
+        {/if}
+      {/each}
+    </ol>
   {:else}
     <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region must be keyboard-reachable) -->
     <ol class="list" data-testid="timeline" tabindex="0" aria-label="Decoded traffic, newest first">

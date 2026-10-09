@@ -21,12 +21,48 @@ const HUE_BUCKETS = 10;
 const ALPHA_BUCKETS = 8;
 
 /**
- * A small ghost after the ghost.js8 mark: a rounded head, two triangular eyes
- * and a scalloped hem. Drawn with an aqua-to-violet gradient, eyes in mint.
+ * A halftone ghost after the ghost.js8 mark: a rounded head, two tall oval eyes
+ * left as holes, and a ragged, dripping hem with a few stray specks.
+ * `#` body, `.` speck, `:` drip, space empty.
  */
-export const GHOST = ['  .-""-.  ', '/  ◣  ◢  \\', '|        |', '|        |', ' \\/\\/\\/\\/ '];
-/** Glyphs in GHOST drawn as eyes rather than body. */
-export const GHOST_EYES = '◣◢';
+export const GHOST = [
+  '        ########        ',
+  '     ##############     ',
+  '   ##################   ',
+  ' .  ################  . ',
+  '  #####  ######  #####  ',
+  '  ####   ######   ####  ',
+  ' .####   ######   ####. ',
+  '  #####  ######  #####  ',
+  '  ####################  ',
+  ' ###################### ',
+  '########################',
+  ' ### ##### ## ####### ##',
+  '  #   ###   #  ###  #   ',
+  '      #     :       :   ',
+  '            .     :     ',
+];
+
+export interface GhostCell {
+  readonly glyph: string;
+  /** Opacity before any flicker. */
+  readonly alpha: number;
+  /** Speck/drip cells flicker; body cells stay steady. */
+  readonly flicker: boolean;
+}
+
+/** What to draw for one sprite cell, or null for empty space. */
+export function ghostCell(sprite: readonly string[], row: number, col: number): GhostCell | null {
+  const ch = sprite[row]?.[col] ?? ' ';
+  if (ch === '.') return { glyph: '.', alpha: 0.3, flicker: true };
+  if (ch === ':') return { glyph: ':', alpha: 0.5, flicker: true };
+  if (ch !== '#') return null;
+  const open = (r: number, c: number): boolean => (sprite[r]?.[c] ?? ' ') !== '#';
+  const edge = open(row - 1, col) || open(row + 1, col) || open(row, col - 1) || open(row, col + 1);
+  return edge
+    ? { glyph: '▒', alpha: 0.6, flicker: false }
+    : { glyph: '░', alpha: 0.5, flicker: false };
+}
 
 // ---------------------------------------------------------------- pure helpers
 
@@ -302,7 +338,7 @@ export class AsciiBackdrop {
     }
 
     this.drawLabels(t);
-    if (ghost) this.drawGhost(ghost.col, ghost.row);
+    if (ghost) this.drawGhost(ghost.col, ghost.row, t);
   }
 
   private drawLabels(t: number): void {
@@ -321,10 +357,10 @@ export class AsciiBackdrop {
   }
 
   private updateGhost(t: number): { col: number; row: number } | null {
-    if (!this.ghost && t >= this.nextGhostAt && this.rows > 12) {
+    if (!this.ghost && t >= this.nextGhostAt && this.rows > 18) {
       this.ghost = {
         born: t,
-        row: 4 + this.random() * (this.rows - 12),
+        row: 3 + this.random() * (this.rows - 18),
         dir: this.random() < 0.5 ? 1 : -1,
       };
     }
@@ -343,16 +379,20 @@ export class AsciiBackdrop {
     return { col, row: g.row + Math.sin((t - g.born) * 1.3) * 0.8 };
   }
 
-  private drawGhost(col: number, row: number): void {
+  private drawGhost(col: number, row: number, t: number): void {
     const { ctx } = this;
     ctx.font = `13px 'JetBrains Mono', ui-monospace, monospace`;
     const width = GHOST[0]?.length ?? 1;
     GHOST.forEach((line, i) => {
       for (let c = 0; c < line.length; c++) {
-        const ch = line[c] ?? ' ';
-        if (ch === ' ') continue;
-        ctx.fillStyle = GHOST_EYES.includes(ch) ? rgba(MINT, 0.8) : rgba(ghostTint(c, width), 0.5);
-        ctx.fillText(ch, (col + c) * CELL_W, (row + i) * CELL_H);
+        const cell = ghostCell(GHOST, i, c);
+        if (!cell) continue;
+        // Specks and drips shimmer out of phase, like the glitchy edge of the mark.
+        const a = cell.flicker
+          ? cell.alpha * (0.5 + 0.5 * Math.sin(t * 3 + c * 7 + i * 3))
+          : cell.alpha;
+        ctx.fillStyle = rgba(ghostTint(c, width), a);
+        ctx.fillText(cell.glyph, (col + c) * CELL_W, (row + i) * CELL_H);
       }
     });
   }

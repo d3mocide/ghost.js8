@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GHOST,
-  GHOST_EYES,
+  ghostCell,
   RAMP,
   flicker,
   ghostTint,
@@ -72,11 +72,27 @@ describe('ascii backdrop helpers', () => {
     for (const line of GHOST) expect(line.length).toBe(w);
   });
 
-  it('draws two eyes in the ghost sprite', () => {
-    const eyes = GHOST.join('')
-      .split('')
-      .filter((ch) => GHOST_EYES.includes(ch));
-    expect(eyes.length).toBe(2);
+  it('leaves two eye holes inside the body and keeps the hem ragged', () => {
+    // Rows 4-7 carry the eyes: body on both sides of a gap, and a gap between the eyes' bodies.
+    for (const r of [4, 5, 6, 7]) {
+      expect(ghostCell(GHOST, r, 2)).not.toBeNull();
+      expect(ghostCell(GHOST, r, 7)).toBeNull();
+      expect(ghostCell(GHOST, r, 11)).not.toBeNull();
+      expect(ghostCell(GHOST, r, 16)).toBeNull();
+    }
+    const hem = GHOST[11] ?? '';
+    expect(hem).toContain(' ');
+  });
+
+  it('draws the outline brighter than the interior and shimmers specks', () => {
+    const edge = ghostCell(GHOST, 4, 2);
+    const inner = ghostCell(GHOST, 8, 10);
+    expect(edge?.glyph).toBe('▒');
+    expect(inner?.glyph).toBe('░');
+    expect(edge?.alpha ?? 0).toBeGreaterThan(inner?.alpha ?? 1);
+    expect(ghostCell(GHOST, 3, 1)?.flicker).toBe(true);
+    expect(inner?.flicker).toBe(false);
+    expect(ghostCell(GHOST, 0, 0)).toBeNull();
   });
 
   it('tints the ghost from aqua on the left to violet on the right', () => {
