@@ -9,8 +9,8 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 
-from ghostjs8.contract.messages import NetLog
-from ghostjs8.ghostnet.recorder import OFFSET_HI_HZ, OFFSET_LO_HZ, net_stations
+from ghostjs8.contract.messages import NetLog, NetSummary
+from ghostjs8.ghostnet.recorder import FLASH, OFFSET_HI_HZ, OFFSET_LO_HZ, net_stations
 from ghostjs8.store.sqlite import Store
 
 # Net ids are generated as "<window id>-YYYYMMDDTHHMMZ". Anything else is refused
@@ -28,6 +28,25 @@ def png_height(path: Path) -> int:
     return int.from_bytes(header[20:24], "big") if header[:8] == PNG_MAGIC else 0
 
 
+def live_summary(store: Store, recordings: Path, summary: NetSummary) -> NetSummary:
+    """A net still being recorded only has its counts written at ``finish()``.
+
+    Fill them from the store so the UI shows the traffic as it arrives.
+    """
+    if summary.ended is not None:
+        return summary
+    decodes = store.net_decodes(summary.id)
+    audio = recordings / summary.id / "audio.flac"
+    return summary.model_copy(
+        update={
+            "decode_count": len(decodes),
+            "station_count": len(net_stations(store, decodes)),
+            "flash_count": sum(1 for d in decodes if FLASH.search(d.text)),
+            "has_audio": audio.is_file() and audio.stat().st_size > 0,
+        }
+    )
+
+
 def nets_router(store: Store | None, recordings: Path) -> APIRouter:
     router = APIRouter(prefix="/api/nets")
 
@@ -43,7 +62,9 @@ def nets_router(store: Store | None, recordings: Path) -> APIRouter:
 
     @router.get("")
     async def list_nets() -> JSONResponse:
-        nets = store.nets() if store is not None else []
+        nets = (
+            [live_summary(store, recordings, n) for n in store.nets()] if store is not None else []
+        )
         return JSONResponse([json.loads(n.model_dump_json()) for n in nets])
 
     @router.get("/{net_id}")
@@ -54,7 +75,7 @@ def nets_router(store: Store | None, recordings: Path) -> APIRouter:
             raise HTTPException(status_code=404, detail="no such net")
         decodes = st.net_decodes(net_id)
         body = NetLog(
-            summary=summary,
+            summary=live_summary(st, recordings, summary),
             decodes=decodes,
             stations=net_stations(st, decodes),
             waterfall_seconds=png_height(recordings / net_id / "waterfall.png"),

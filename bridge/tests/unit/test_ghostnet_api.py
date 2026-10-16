@@ -39,7 +39,7 @@ class FakeDecoder:
         pass
 
 
-def recorded(tmp_path: Path) -> tuple[Station, Settings]:
+def recorded(tmp_path: Path, *, finish: bool = True) -> tuple[Station, Settings]:
     clock = ManualClock()
     store = Store(":memory:", clock)
     now = clock.utc_now()
@@ -82,7 +82,10 @@ def recorded(tmp_path: Path) -> tuple[Station, Settings]:
         )
     )
     clock.advance(2)
-    rec.finish()
+    if finish:
+        rec.finish()
+    else:
+        rec._audio.flush()  # make the in-progress file visible on disk
     station = Station(Hub(), FakeDecoder, clock=clock, store=store)
     return station, Settings(db_path=":memory:", recordings_dir=str(tmp_path))
 
@@ -105,6 +108,16 @@ def test_net_endpoints(tmp_path: Path) -> None:
         assert flac.status_code == 200
         assert flac.headers["content-type"] == "audio/flac"
         assert flac.content.startswith(b"fLaC")
+
+
+def test_net_in_progress_reports_live_counts(tmp_path: Path) -> None:
+    station, settings = recorded(tmp_path, finish=False)
+    with TestClient(create_app(station, settings, directory=Directory(fetch=_no_fetch))) as http:
+        (listed,) = (NetSummary.model_validate(n) for n in http.get("/api/nets").json())
+        assert listed.ended is None
+        assert (listed.decode_count, listed.station_count, listed.has_audio) == (1, 1, True)
+        log = NetLog.model_validate(http.get(f"/api/nets/{NET}").json())
+        assert log.summary.decode_count == 1
 
 
 @pytest.mark.parametrize(
