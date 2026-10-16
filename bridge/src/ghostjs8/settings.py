@@ -53,6 +53,7 @@ class Settings:
     ghostnet_preroll_minutes: int = 10
     ghostnet_record_audio: bool = True
     ghostnet_park: bool = True
+    ghostnet_windows: str = ""  # comma-separated window ids to follow by default; empty = all
     recordings_dir: str = "/data/nets"
     net_retention_days: int = 90
 
@@ -103,6 +104,7 @@ class Settings:
             ghostnet_preroll_minutes=_int(e, "GHOSTJS8_GHOSTNET_PREROLL_MINUTES", 10),
             ghostnet_record_audio=_bool(e, "GHOSTJS8_GHOSTNET_RECORD_AUDIO", default=True),
             ghostnet_park=_bool(e, "GHOSTJS8_GHOSTNET_PARK", default=True),
+            ghostnet_windows=e.get("GHOSTJS8_GHOSTNET_WINDOWS", "").strip(),
             recordings_dir=e.get("GHOSTJS8_RECORDINGS_DIR", cls.recordings_dir),
             net_retention_days=_int(e, "GHOSTJS8_NET_RETENTION_DAYS", 90),
         )

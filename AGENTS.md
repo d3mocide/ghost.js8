@@ -122,6 +122,17 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
   self-test (`docs/decoder-selftest.md`) is the guard. Its canary never leaves the agent:
   if you add a new path that forwards decodes or call activity, route it through
   `SelfTest.intercept`, or `@GHOSTNET`/`KB8JEP` will show up as real traffic.
+- A new client/server wire model must be listed in `contract/generate.py` (`SERVER`/`CLIENT`),
+  or the schema references it without defining it and `make contract` fails. The generated
+  TypeScript requires every field: send explicit `null`s (see `settingsMessage()`).
+- GhostNet autopilot settings (master switch, park, record audio, per-window follow and
+  preferred receiver) are edited from the app and persisted in the `settings` table; the
+  environment only seeds them. `ghostnet_settings` must not call `operator_changed()`:
+  configuring the autopilot is not taking manual control. `pilot.update_settings` is the
+  only writer.
+- `GHOSTJS8_RECEIVER_HOST` pins a receiver the autopilot never replaces while it is
+  connected. On 2026-10-16 it kept the autopilot on a receiver whose SNR had fallen to 10 dB
+  for every window. Leave it empty in production; use per-window preferred receivers.
 - Replaying audio through a throwaway stack is the way to ask "what *should* have
   decoded?": `fake-kiwi --wav` (UTC-aligned, 12 kHz mono) + fresh decoder + bridge,
   as in `docker-compose.test.yml`, on an isolated network.

@@ -36,6 +36,7 @@ from ghostjs8.contract.messages import (
     RejectReasonName,
     Session,
     SessionState,
+    SetGhostNetSettings,
     TuningModel,
 )
 from ghostjs8.contract.messages import Station as StationMsg
@@ -178,6 +179,9 @@ class Station(ReceiverSink, DecoderSink):
         self.observers: list[StationObserver] = []
         # Called when a viewer changes tuning or receiver (the GhostNet autopilot yields).
         self.operator_action: list[Callable[[], None]] = []
+        # The GhostNet autopilot's handler for settings edits; None while it is not running.
+        # Returns an error message, or None when the change was applied.
+        self.ghostnet_settings: Callable[[SetGhostNetSettings], str | None] | None = None
         # Extra messages sent to each new viewer after the standard ones.
         self.join_messages: list[Callable[[], BaseModel]] = []
 

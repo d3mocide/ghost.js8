@@ -42,6 +42,10 @@ CREATE TABLE IF NOT EXISTS net_decodes (
     json TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS net_decodes_net ON net_decodes(net_id);
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    json TEXT NOT NULL
+);
 """
 
 
@@ -183,6 +187,18 @@ class Store:
             "SELECT json FROM nets ORDER BY started DESC LIMIT ?", (limit,)
         ).fetchall()
         return [NetSummary.model_validate_json(r[0]) for r in rows]
+
+    def setting(self, key: str) -> str | None:
+        """A persisted operator setting (raw JSON), or None if never saved."""
+        row = self._db.execute("SELECT json FROM settings WHERE key = ?", (key,)).fetchone()
+        return str(row[0]) if row else None
+
+    def save_setting(self, key: str, value_json: str) -> None:
+        self._db.execute(
+            "INSERT INTO settings (key, json) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET json = excluded.json",
+            (key, value_json),
+        )
 
     def add_net_decode(self, net_id: str, decode: Decode) -> None:
         self._db.execute(

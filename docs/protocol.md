@@ -67,10 +67,17 @@ browser                                   bridge
 | `tune` | `tuning {dial_hz, mode, low_cut_hz, high_cut_hz}` | affects everyone watching this station |
 | `select_receiver` | `receiver {host, port, name}`, `password` | loopback / link-local / reserved addresses refused; private ranges unless disabled |
 | `disconnect_receiver` | — | release the receiver |
+| `ghostnet_settings` | `autopilot_enabled`, `park`, `record_audio`, `windows {<id>: {enabled, receiver, clear_receiver}}` | edits the GhostNet autopilot ([ghostnet.md](ghostnet.md#settings)); `null` = leave alone; unknown window or bad receiver → `error`; does **not** pause the autopilot |
 | `ping` | — | answered with `pong` |
 
-Control messages (`tune`, `select_receiver`, `disconnect_receiver`) are rate
-limited to 10 per 5 s per connection. Messages over 4 KiB are rejected.
+Control messages (`tune`, `select_receiver`, `disconnect_receiver`,
+`ghostnet_settings`) are rate limited to 10 per 5 s per connection. Messages over
+4 KiB are rejected.
+
+The generated TypeScript requires every field, so clients send `null` for what a
+`ghostnet_settings` change does not mention (`settingsMessage()` in
+`web/src/lib/ghostnet.ts`). The bridge answers a change by broadcasting the new
+`ghostnet` status to every viewer.
 
 ## Binary frames (bridge → browser)
 

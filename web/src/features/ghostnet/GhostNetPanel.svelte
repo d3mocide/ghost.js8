@@ -1,6 +1,7 @@
 <script lang="ts">
   import Panel from '../../components/Panel.svelte';
   import Pill from '../../components/Pill.svelte';
+  import GhostNetSettings from './GhostNetSettings.svelte';
   import type { PillTone } from '../../components/pill';
   import { useApp } from '../../lib/state/context';
   import { countdown, localWhen, REGION_LABEL } from '../../lib/ghostnet';
@@ -132,6 +133,8 @@
       {#if receiverNote}<p class="muted small">Receiver: {receiverNote}</p>{/if}
       {#if g.detail}<p class="warn small">{g.detail}</p>{/if}
     {/if}
+
+    <GhostNetSettings {g} />
   {/if}
 
   <h3 class="caps">Recorded nets</h3>

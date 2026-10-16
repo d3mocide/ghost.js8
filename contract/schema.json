@@ -44,6 +44,7 @@
       "discriminator": {
         "mapping": {
           "disconnect_receiver": "#/$defs/DisconnectReceiver",
+          "ghostnet_settings": "#/$defs/SetGhostNetSettings",
           "hello": "#/$defs/ClientHello",
           "ping": "#/$defs/Ping",
           "select_receiver": "#/$defs/SelectReceiver",
@@ -67,6 +68,9 @@
         },
         {
           "$ref": "#/$defs/Subscribe"
+        },
+        {
+          "$ref": "#/$defs/SetGhostNetSettings"
         },
         {
           "$ref": "#/$defs/Ping"
@@ -310,6 +314,8 @@
             "invalid_tuning",
             "invalid_receiver",
             "rate_limited",
+            "invalid_settings",
+            "unavailable",
             "internal"
           ],
           "type": "string"
@@ -424,21 +430,40 @@
         },
         "detail": {
           "type": "string"
+        },
+        "autopilot_enabled": {
+          "type": "boolean"
+        },
+        "park": {
+          "type": "boolean"
+        },
+        "record_audio": {
+          "type": "boolean"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/GhostNetWindowSetting"
+          },
+          "type": "array"
         }
       },
       "required": [
+        "autopilot_enabled",
         "detail",
         "enabled",
         "home_grid",
         "mode",
         "next_window",
+        "park",
         "paused_until",
         "receiver_reason",
+        "record_audio",
         "recording_net_id",
         "region",
         "type",
         "v",
-        "window"
+        "window",
+        "windows"
       ],
       "title": "GhostNet",
       "type": "object"
@@ -485,6 +510,105 @@
       ],
       "title": "GhostNetWindow",
       "type": "object"
+    },
+    "GhostNetWindowSetting": {
+      "additionalProperties": false,
+      "description": "One window of the plan with the operator's choices for it.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "net",
+            "bridge"
+          ],
+          "type": "string"
+        },
+        "band": {
+          "type": "string"
+        },
+        "dial_hz": {
+          "type": "integer"
+        },
+        "weekday": {
+          "type": "integer"
+        },
+        "start": {
+          "type": "string"
+        },
+        "minutes": {
+          "type": "integer"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "receiver": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReceiverRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "band",
+        "dial_hz",
+        "enabled",
+        "id",
+        "kind",
+        "label",
+        "minutes",
+        "receiver",
+        "start",
+        "weekday"
+      ],
+      "title": "GhostNetWindowSetting",
+      "type": "object"
+    },
+    "GhostNetWindowUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "receiver": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReceiverRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "clear_receiver": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "title": "GhostNetWindowUpdate",
+      "type": "object",
+      "required": [
+        "clear_receiver",
+        "enabled",
+        "receiver"
+      ]
     },
     "Health": {
       "additionalProperties": false,
@@ -1229,6 +1353,72 @@
       ],
       "title": "Session",
       "type": "object"
+    },
+    "SetGhostNetSettings": {
+      "additionalProperties": false,
+      "description": "Change the GhostNet autopilot settings. Unlisted fields are left alone.\n\nUnlike tune / select_receiver this does not pause the autopilot: it *configures* it.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "ghostnet_settings",
+          "default": "ghostnet_settings",
+          "type": "string"
+        },
+        "autopilot_enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "park": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "record_audio": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "windows": {
+          "additionalProperties": {
+            "$ref": "#/$defs/GhostNetWindowUpdate"
+          },
+          "maxProperties": 32,
+          "type": "object"
+        }
+      },
+      "title": "SetGhostNetSettings",
+      "type": "object",
+      "required": [
+        "autopilot_enabled",
+        "park",
+        "record_audio",
+        "type",
+        "v",
+        "windows"
+      ]
     },
     "Station": {
       "additionalProperties": false,

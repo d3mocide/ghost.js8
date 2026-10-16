@@ -35,6 +35,7 @@ CLIENT: list[type[BaseModel]] = [
     m.SelectReceiver,
     m.DisconnectReceiver,
     m.Subscribe,
+    m.SetGhostNetSettings,
     m.Ping,
 ]
 HTTP: list[type[BaseModel]] = [m.ReceiverDirectory, m.NetSummary, m.NetLog, m.StationHistory]

@@ -32,6 +32,8 @@ ErrorCode = Literal[
     "invalid_tuning",
     "invalid_receiver",
     "rate_limited",
+    "invalid_settings",
+    "unavailable",
     "internal",
 ]
 
@@ -181,6 +183,21 @@ class GhostNetWindow(_Model):
     end: datetime
 
 
+class GhostNetWindowSetting(_Model):
+    """One window of the plan with the operator's choices for it."""
+
+    id: str
+    label: str
+    kind: Literal["net", "bridge"]
+    band: str
+    dial_hz: int
+    weekday: int  # UTC, Monday = 0
+    start: str  # "HH:MM" UTC
+    minutes: int
+    enabled: bool  # follow and record this window
+    receiver: ReceiverRef | None  # preferred receiver; None = the picker chooses the best one
+
+
 class GhostNet(_Msg):
     """GhostNet autopilot status (absent features report enabled = false)."""
 
@@ -195,6 +212,10 @@ class GhostNet(_Msg):
     receiver_reason: str
     paused_until: datetime | None
     detail: str
+    autopilot_enabled: bool  # operator master switch (distinct from `enabled`: the feature is on)
+    park: bool  # between nets, keep watching 7.107 MHz
+    record_audio: bool
+    windows: list[GhostNetWindowSetting]
 
 
 class Pong(_Msg):
@@ -325,12 +346,37 @@ class Subscribe(_Msg):
     waterfall: bool = False
 
 
+class GhostNetWindowUpdate(_Model):
+    enabled: bool | None = None
+    receiver: ReceiverRef | None = None  # prefer this receiver for the window
+    clear_receiver: bool = False  # back to automatic choice
+
+
+class SetGhostNetSettings(_Msg):
+    """Change the GhostNet autopilot settings. Unlisted fields are left alone.
+
+    Unlike tune / select_receiver this does not pause the autopilot: it *configures* it.
+    """
+
+    type: Literal["ghostnet_settings"] = "ghostnet_settings"
+    autopilot_enabled: bool | None = None
+    park: bool | None = None
+    record_audio: bool | None = None
+    windows: dict[str, GhostNetWindowUpdate] = Field(default_factory=dict, max_length=32)
+
+
 class Ping(_Msg):
     type: Literal["ping"] = "ping"
 
 
 ClientMessage = Annotated[
-    ClientHello | Tune | SelectReceiver | DisconnectReceiver | Subscribe | Ping,
+    ClientHello
+    | Tune
+    | SelectReceiver
+    | DisconnectReceiver
+    | Subscribe
+    | SetGhostNetSettings
+    | Ping,
     Field(discriminator="type"),
 ]
 client_message_adapter: TypeAdapter[ClientMessage] = TypeAdapter(ClientMessage)

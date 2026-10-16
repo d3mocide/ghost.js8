@@ -33,6 +33,7 @@ from ghostjs8.contract.messages import (
     Ping,
     Pong,
     SelectReceiver,
+    SetGhostNetSettings,
     StationHistory,
     Subscribe,
     Tune,
@@ -247,6 +248,30 @@ async def _pump_in(
         await _handle(msg, client, station, settings, limiter)
 
 
+def _ghostnet_settings(
+    msg: SetGhostNetSettings, client: Client, station: Station, settings: Settings
+) -> None:
+    handler = station.ghostnet_settings
+    if handler is None:
+        _error(client, "unavailable", "the GhostNet autopilot is not running on this bridge")
+        return
+    for window_id, change in msg.windows.items():
+        if change.receiver is None:
+            continue
+        try:
+            validate_receiver_host(
+                change.receiver.host,
+                allow_private=settings.allow_private_receivers,
+                allow_loopback=settings.allow_loopback_receivers,
+            )
+        except InvalidReceiver as exc:
+            _error(client, "invalid_receiver", f"{window_id}: {exc}")
+            return
+    problem = handler(msg)
+    if problem is not None:
+        _error(client, "invalid_settings", problem)
+
+
 async def _handle(
     msg: ClientMessage, client: Client, station: Station, settings: Settings, limiter: RateLimiter
 ) -> None:
@@ -256,11 +281,14 @@ async def _handle(
     if isinstance(msg, Subscribe):
         client.audio, client.waterfall = msg.audio, msg.waterfall
         return
-    if not isinstance(msg, (Tune, SelectReceiver, DisconnectReceiver)):
+    if not isinstance(msg, (Tune, SelectReceiver, DisconnectReceiver, SetGhostNetSettings)):
         return  # ClientHello: informational
     if not limiter.allow():
         _error(client, "rate_limited", "too many control messages; slow down")
         return
+    if isinstance(msg, SetGhostNetSettings):
+        _ghostnet_settings(msg, client, station, settings)
+        return  # configures the autopilot: it must not pause it (no operator_changed)
     if isinstance(msg, Tune):
         t = msg.tuning
         if t.low_cut_hz >= t.high_cut_hz:

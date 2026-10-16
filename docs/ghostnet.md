@@ -21,6 +21,7 @@ Set these on the `bridge` service (for example in `.env`):
 | `GHOSTJS8_GHOSTNET_PREROLL_MINUTES` | `10` | Connect and start recording this long before a window opens |
 | `GHOSTJS8_GHOSTNET_RECORD_AUDIO` | `on` | Record FLAC audio (traffic and waterfall are always recorded) |
 | `GHOSTJS8_GHOSTNET_PARK` | `on` | Between windows, park on 7.107 MHz and keep watching (not recorded) |
+| `GHOSTJS8_GHOSTNET_WINDOWS` | all | Comma-separated window ids to follow by default (for example `na-net,na-eu-20m`); see [Settings](#settings) |
 | `GHOSTJS8_RECORDINGS_DIR` | `/data/nets` | Where recordings are written (on the bridge data volume) |
 | `GHOSTJS8_NET_RETENTION_DAYS` | `90` | Recordings older than this are pruned hourly |
 
@@ -56,6 +57,39 @@ decode filter. If the plan changes, edit `PLAN` and its tests.
 
 The ALE codeplug and the HFN ALE net list distributed with the plan are for
 ALE, a different mode. ghost.js8 does not use them.
+
+## Settings
+
+The panel's **Autopilot settings** section edits the autopilot live. The choices are
+stored in the bridge's database, so they survive restarts and are shared by every
+viewer. The environment variables above only *seed* the first run; once something has
+been changed in the app, the app wins.
+
+| Setting | Effect |
+|---|---|
+| Autopilot | Master switch. Off, the autopilot does not touch the receiver, tuning or recordings, and a window in progress stops being recorded. |
+| Watch 7.107 between nets | The `GHOSTJS8_GHOSTNET_PARK` option, live. |
+| Record audio | The `GHOSTJS8_GHOSTNET_RECORD_AUDIO` option. It applies from the next net, not to one already recording. |
+| *Per window:* follow | Off, the window is skipped entirely: no pre-roll, no tuning, no recording, and it is not offered as "next". |
+| *Per window:* receiver | **Auto** (the picker's choice at the time) or a **preferred receiver**. |
+
+A preferred receiver is tried first for its window, and a working feed on another
+receiver yields to it when that window starts. It is a preference, not a lock: if it
+rejects, fails or stays silent it is dropped for the rest of that window and the picker
+takes over, so a dead receiver cannot strand a net. The easiest way to set one is to
+click **Use &lt;receiver&gt;** on a window while the receiver you want is connected.
+Preferences are ignored outside their window (parking still uses the picker).
+
+Changing a setting never pauses the autopilot; only tuning, selecting a receiver or
+disconnecting does (see [Manual override](#manual-override)).
+
+### Pinning a boot receiver
+
+`GHOSTJS8_RECEIVER_HOST` makes the operator's receiver the boot target. The autopilot
+never replaces a receiver that is `connected` and covers the dial, so a pinned boot
+receiver is used for **every** window even after its quality drops. Leave it empty to
+let the picker choose and fail over (recommended), or use a per-window preferred
+receiver above.
 
 ## Receiver choice
 

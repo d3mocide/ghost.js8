@@ -12,6 +12,7 @@ standard 7.078 MHz.
 from __future__ import annotations
 
 import enum
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 
@@ -189,14 +190,23 @@ def windows_for(region: Region) -> list[NetWindow]:
     return [w for w in PLAN if region in w.regions]
 
 
-def upcoming(region: Region, now: datetime, count: int = 5) -> list[Occurrence]:
-    """Occurrences in progress or upcoming, soonest first."""
-    occ = sorted((w.occurrence_from(now) for w in windows_for(region)), key=lambda o: o.start)
+def upcoming(
+    region: Region, now: datetime, count: int = 5, only: Collection[str] | None = None
+) -> list[Occurrence]:
+    """Occurrences in progress or upcoming, soonest first.
+
+    ``only`` restricts the result to those window ids (the operator's enabled set).
+    """
+    windows = [w for w in windows_for(region) if only is None or w.id in only]
+    occ = sorted((w.occurrence_from(now) for w in windows), key=lambda o: o.start)
     return occ[:count]
 
 
 def active(
-    region: Region, now: datetime, preroll: timedelta = timedelta(minutes=10)
+    region: Region,
+    now: datetime,
+    preroll: timedelta = timedelta(minutes=10),
+    only: Collection[str] | None = None,
 ) -> Occurrence | None:
     """The occurrence the station should be on now (pre-roll included), if any.
 
@@ -204,7 +214,9 @@ def active(
     window's pre-roll has begun.
     """
     candidates = [
-        o for o in upcoming(region, now, count=len(PLAN)) if o.start - preroll <= now < o.end
+        o
+        for o in upcoming(region, now, count=len(PLAN), only=only)
+        if o.start - preroll <= now < o.end
     ]
     if not candidates:
         return None

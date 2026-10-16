@@ -15,7 +15,7 @@ export type ServerMessage =
  * via the `definition` "ClientMessage".
  */
 export type ClientMessage =
-  ClientHello | Tune | SelectReceiver | DisconnectReceiver | Subscribe | Ping;
+  ClientHello | Tune | SelectReceiver | DisconnectReceiver | Subscribe | SetGhostNetSettings | Ping;
 
 /**
  * ghost.js8 bridge <-> browser protocol v1. Generated; do not edit.
@@ -203,6 +203,10 @@ export interface GhostNet {
   receiver_reason: string;
   paused_until: string | null;
   detail: string;
+  autopilot_enabled: boolean;
+  park: boolean;
+  record_audio: boolean;
+  windows: GhostNetWindowSetting[];
 }
 /**
  * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
@@ -218,6 +222,24 @@ export interface GhostNetWindow {
   end: string;
 }
 /**
+ * One window of the plan with the operator's choices for it.
+ *
+ * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
+ * via the `definition` "GhostNetWindowSetting".
+ */
+export interface GhostNetWindowSetting {
+  id: string;
+  label: string;
+  kind: 'net' | 'bridge';
+  band: string;
+  dial_hz: number;
+  weekday: number;
+  start: string;
+  minutes: number;
+  enabled: boolean;
+  receiver: ReceiverRef | null;
+}
+/**
  * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
  * via the `definition` "Error".
  */
@@ -231,6 +253,8 @@ export interface Error {
     | 'invalid_tuning'
     | 'invalid_receiver'
     | 'rate_limited'
+    | 'invalid_settings'
+    | 'unavailable'
     | 'internal';
   message: string;
 }
@@ -290,6 +314,33 @@ export interface Subscribe {
   type: 'subscribe';
   audio: boolean;
   waterfall: boolean;
+}
+/**
+ * Change the GhostNet autopilot settings. Unlisted fields are left alone.
+ *
+ * Unlike tune / select_receiver this does not pause the autopilot: it *configures* it.
+ *
+ * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
+ * via the `definition` "SetGhostNetSettings".
+ */
+export interface SetGhostNetSettings {
+  v: 1;
+  type: 'ghostnet_settings';
+  autopilot_enabled: boolean | null;
+  park: boolean | null;
+  record_audio: boolean | null;
+  windows: {
+    [k: string]: GhostNetWindowUpdate | undefined;
+  };
+}
+/**
+ * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
+ * via the `definition` "GhostNetWindowUpdate".
+ */
+export interface GhostNetWindowUpdate {
+  enabled: boolean | null;
+  receiver: ReceiverRef | null;
+  clear_receiver: boolean;
 }
 /**
  * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
