@@ -285,9 +285,17 @@ class Station(ReceiverSink, DecoderSink):
             return self._receiver_backoff.next_delay()
         raise exc
 
+    def _sync_selftest_hold(self) -> None:
+        """The decoder's self-test stays out of the way while a net window is recording."""
+        hold = bool(self.observers)
+        set_hold = getattr(self.decoder, "set_selftest_hold", None)
+        if set_hold is not None:  # optional capability: not every decoder runs a self-test
+            set_hold(hold)
+
     async def _health_loop(self) -> None:
         last_sent = -1e9
         while True:
+            self._sync_selftest_hold()
             snap, changed = self.health.poll()
             now = self.clock.monotonic()
             if changed or now - last_sent >= HEALTH_HEARTBEAT_S:

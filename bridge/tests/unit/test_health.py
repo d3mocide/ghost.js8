@@ -1,12 +1,36 @@
 from datetime import timedelta
+from typing import Literal
 
-from ghostjs8.decoders.base import DecoderHealth
+from ghostjs8.decoders.base import DecoderHealth, SelfTestFacts, SelfTestState
 from ghostjs8.session.health import HealthTracker
 from ghostjs8.util.clock import ManualClock
 
 
+def selftest(
+    clock: ManualClock,
+    state: SelfTestState = "ok",
+    *,
+    failures: int = 0,
+    pass_age_s: float = 60.0,
+) -> SelfTestFacts:
+    now = clock.utc_now()
+    return SelfTestFacts(
+        state=state,
+        last_run_utc=now,
+        last_pass_utc=now - timedelta(seconds=pass_age_s) if state != "unknown" else None,
+        consecutive_failures=failures,
+        interval_s=3600.0,
+        detail="detail",
+    )
+
+
 def facts(
-    clock: ManualClock, *, up: bool = True, capturing: bool = True, ping_age: float = 1.0
+    clock: ManualClock,
+    *,
+    up: bool = True,
+    capturing: bool = True,
+    ping_age: float = 1.0,
+    test: SelfTestFacts | Literal["ok"] | None = "ok",
 ) -> DecoderHealth:
     now = clock.utc_now()
     return DecoderHealth(
@@ -15,6 +39,7 @@ def facts(
         last_ping_utc=now - timedelta(seconds=ping_age),
         last_api_reply_utc=None,
         last_audio_write_utc=now,
+        selftest=selftest(clock) if test == "ok" else test,
     )
 
 
@@ -148,3 +173,48 @@ def test_poll_reports_changes_only() -> None:
     h.decoder_facts(facts(clock))
     _, changed = h.poll()
     assert changed
+
+
+def test_no_selftest_report_is_unknown_and_does_not_degrade() -> None:
+    h, clock = healthy()
+    h.decoder_facts(facts(clock, test=None))
+    snap = h.snapshot()
+    assert snap.components.decoder_selftest.state == "unknown"
+    assert snap.overall == "listening"
+
+
+def test_selftest_not_yet_run_is_unknown_and_does_not_degrade() -> None:
+    h, clock = healthy()
+    h.decoder_facts(facts(clock, test=selftest(clock, "unknown")))
+    snap = h.snapshot()
+    assert snap.components.decoder_selftest.state == "unknown"
+    assert snap.overall == "listening"
+
+
+def test_one_failed_selftest_degrades_two_take_it_down() -> None:
+    h, clock = healthy()
+    h.decoder_facts(facts(clock, test=selftest(clock, "failed", failures=1)))
+    snap = h.snapshot()
+    assert snap.components.decoder_selftest.state == "degraded"
+    assert snap.overall == "degraded"
+    h.decoder_facts(facts(clock, test=selftest(clock, "failed", failures=2)))
+    snap = h.snapshot()
+    assert snap.components.decoder_selftest.state == "down"
+    assert snap.overall == "degraded"  # alive and listening, but not decoding
+
+
+def test_selftest_that_stops_running_goes_overdue() -> None:
+    h, clock = healthy()
+    h.decoder_facts(facts(clock, test=selftest(clock, pass_age_s=3600 * 2.4)))
+    assert h.snapshot().components.decoder_selftest.state == "ok"
+    h.decoder_facts(facts(clock, test=selftest(clock, pass_age_s=3600 * 2.6)))
+    snap = h.snapshot()
+    assert snap.components.decoder_selftest.state == "degraded"
+    assert "overdue" in snap.components.decoder_selftest.detail
+    assert snap.overall == "degraded"
+
+
+def test_selftest_is_unknown_while_the_decoder_is_down() -> None:
+    h, clock = healthy()
+    h.decoder_facts(facts(clock, up=False))
+    assert h.snapshot().components.decoder_selftest.state == "unknown"

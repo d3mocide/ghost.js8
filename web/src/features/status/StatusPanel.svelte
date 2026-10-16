@@ -12,6 +12,7 @@
     ['decoder_process', 'Decoder process'],
     ['decoder_api', 'Decoder API'],
     ['decoder_capture', 'Decoder capturing'],
+    ['decoder_selftest', 'Decoder self-test'],
     ['receiver', 'Receiver'],
     ['audio', 'Audio feed'],
     ['waterfall', 'Waterfall feed'],

@@ -71,6 +71,7 @@ export interface Components {
   decoder_process: Component;
   decoder_api: Component;
   decoder_capture: Component;
+  decoder_selftest: Component;
   receiver: Component;
   audio: Component;
   waterfall: Component;

@@ -39,6 +39,21 @@ class SpotEvent:
     grid: str | None = None
 
 
+SelfTestState = Literal["unknown", "ok", "failed"]
+
+
+@dataclass(frozen=True, slots=True)
+class SelfTestFacts:
+    """Outcome of the decoder's known-answer self-test (see decoders/js8call_native/selftest.py)."""
+
+    state: SelfTestState
+    last_run_utc: datetime | None
+    last_pass_utc: datetime | None
+    consecutive_failures: int
+    interval_s: float  # how often a run is due; lets the bridge judge staleness
+    detail: str = ""
+
+
 @dataclass(frozen=True, slots=True)
 class DecoderHealth:
     """Facts reported by the decoder, each with the time it was last true."""
@@ -50,6 +65,7 @@ class DecoderHealth:
     last_audio_write_utc: datetime | None  # audio last delivered into the decoder input
     dropped_audio_blocks: int = 0
     details: dict[str, str] = field(default_factory=dict)
+    selftest: SelfTestFacts | None = None  # None: the decoder runs no self-test
 
 
 class DecoderSink(Protocol):

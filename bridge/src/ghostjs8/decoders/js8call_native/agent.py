@@ -20,6 +20,7 @@ import contextlib
 import itertools
 import json
 import logging
+import os
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -31,6 +32,12 @@ from websockets.exceptions import ConnectionClosed
 from ghostjs8.decoders.base import DecoderHealth
 from ghostjs8.decoders.js8call_native import agent_protocol as proto
 from ghostjs8.decoders.js8call_native.messages import FORWARDED_TYPES
+from ghostjs8.decoders.js8call_native.selftest import (
+    Action,
+    CanaryMixer,
+    SelfTest,
+    load_clip,
+)
 from ghostjs8.util.clock import Clock, SystemClock
 from ghostjs8.util.logs import configure
 
@@ -60,9 +67,15 @@ PACAT_CMD = (
 class Js8UdpApi(asyncio.DatagramProtocol):
     """JS8Call's UDP API endpoint on localhost."""
 
-    def __init__(self, clock: Clock, forward: asyncio.Queue[str]) -> None:
+    def __init__(
+        self,
+        clock: Clock,
+        forward: asyncio.Queue[str],
+        selftest: SelfTest | None = None,
+    ) -> None:
         self._clock = clock
         self._forward = forward
+        self._selftest = selftest
         self._transport: asyncio.DatagramTransport | None = None
         self.reply_addr: tuple[str, int] | None = None
         self.last_ping: datetime | None = None
@@ -94,6 +107,8 @@ class Js8UdpApi(asyncio.DatagramProtocol):
         if isinstance(msg_id, int) and msg_id in self._pending:
             self._pending.discard(msg_id)
             self.last_reply = now
+        if self._selftest is not None and self._selftest.intercept(message, now):
+            return  # the decoder's answer to our own self-test frame: never forwarded
         if mtype in FORWARDED_TYPES:
             try:
                 self._forward.put_nowait(proto.encode_js8(message, now))
@@ -201,12 +216,12 @@ def js8call_capturing(
     return False
 
 
-async def _run(*cmd: str) -> str:
+async def _run(*cmd: str, timeout_s: float = 4) -> str:
     proc = await asyncio.create_subprocess_exec(
         *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
     )
     try:
-        out, _ = await asyncio.wait_for(proc.communicate(), 4)
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout_s)
     except TimeoutError:
         proc.kill()
         return ""
@@ -225,6 +240,15 @@ async def probe_container() -> tuple[bool, bool]:
 # ---------------------------------------------------------------------- agent
 
 Probe = Callable[[], Awaitable[tuple[bool, bool]]]
+Restart = Callable[[], Awaitable[None]]
+
+SUPERVISORCTL = ("supervisorctl", "-c", "/etc/ghostjs8/supervisord.conf")
+SELFTEST_AUDIO_FRESH_S = 3.0  # audio must be flowing for a test to mean anything
+DEFAULT_CLIP = "/usr/share/ghostjs8/selftest/canary-js8-normal.wav"
+
+
+async def restart_js8call() -> None:
+    await _run(*SUPERVISORCTL, "restart", "js8call", timeout_s=30)
 
 
 class Agent:
@@ -238,12 +262,17 @@ class Agent:
         probe: Probe = probe_container,
         health_interval_s: float = 3.0,
         call_activity_interval_s: float = 15.0,
+        selftest: SelfTest | None = None,
+        restart: Restart = restart_js8call,
     ) -> None:
         self.clock = clock or SystemClock()
         self.forward: asyncio.Queue[str] = asyncio.Queue(maxsize=512)
-        self.udp = Js8UdpApi(self.clock, self.forward)
+        self.selftest = selftest
+        self.udp = Js8UdpApi(self.clock, self.forward, selftest)
         self.pcm = pcm or PcmSink(self.clock)
         self._probe = probe
+        self._restart = restart
+        self.selftest_hold = False
         self._udp_addr = (udp_host, udp_port)
         self._health_interval_s = health_interval_s
         self._call_activity_interval_s = call_activity_interval_s
@@ -271,6 +300,7 @@ class Agent:
                 tg.create_task(self._health_loop())
                 tg.create_task(self._call_activity_loop())
                 tg.create_task(self._forward_loop())
+                tg.create_task(self._selftest_loop())
         finally:
             transport.close()
 
@@ -286,13 +316,26 @@ class Agent:
             await ws.send(proto.encode_health(self.health, self.clock.utc_now()))
             async for message in ws:
                 if isinstance(message, bytes):
-                    self.pcm.submit(message)
+                    self.pcm.submit(self._mix(message))
+                else:
+                    self._control(message)
         except ConnectionClosed:
             pass
         finally:
             if self._bridge is ws:
                 self._bridge = None
             log.info("bridge disconnected")
+
+    def _mix(self, pcm: bytes) -> bytes:
+        return pcm if self.selftest is None else self.selftest.mix(pcm, self.clock.utc_now())
+
+    def _control(self, text: str) -> None:
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            return
+        if isinstance(payload, dict) and payload.get("t") == "selftest_hold":
+            self.selftest_hold = payload.get("hold") is True
 
     async def _send(self, text: str) -> None:
         ws = self._bridge
@@ -318,14 +361,51 @@ class Agent:
                 details={
                     "udp_reply_port": str(self.udp.reply_addr[1]) if self.udp.reply_addr else ""
                 },
+                selftest=self.selftest.facts() if self.selftest else None,
             )
             await self._send(proto.encode_health(self.health, self.clock.utc_now()))
             await asyncio.sleep(self._health_interval_s)
+
+    def _selftest_ready(self) -> bool:
+        """A test only means something with a bridge feeding audio and JS8Call listening."""
+        last = self.pcm.last_write
+        fresh = (
+            self._bridge is not None
+            and last is not None
+            and (self.clock.utc_now() - last).total_seconds() <= SELFTEST_AUDIO_FRESH_S
+        )
+        return fresh and self.health.process_up and self.health.capturing
+
+    async def _selftest_loop(self) -> None:
+        if self.selftest is None:
+            return
+        while True:
+            await asyncio.sleep(1.0)
+            action = self.selftest.step(ready=self._selftest_ready(), hold=self.selftest_hold)
+            if action is Action.RESTART_DECODER:
+                log.warning("self-test: restarting JS8Call")
+                await self._restart()
 
     async def _call_activity_loop(self) -> None:
         while True:
             await asyncio.sleep(self._call_activity_interval_s)
             self.udp.request("RX.GET_CALL_ACTIVITY")
+
+
+def selftest_from_env(clock: Clock | None = None) -> SelfTest | None:
+    """The self-test, unless disabled or its clip is unusable (logged; the agent still runs)."""
+    if os.environ.get("GHOSTJS8_SELFTEST", "on").strip().lower() in ("off", "0", "false", "no"):
+        log.info("self-test disabled (GHOSTJS8_SELFTEST=off)")
+        return None
+    clip = os.environ.get("GHOSTJS8_SELFTEST_CLIP", DEFAULT_CLIP)
+    try:
+        mixer = CanaryMixer(load_clip(clip))
+    except ValueError:
+        log.exception("self-test unavailable")
+        return None
+    interval = float(os.environ.get("GHOSTJS8_SELFTEST_INTERVAL_S", "3600"))
+    first = float(os.environ.get("GHOSTJS8_SELFTEST_FIRST_DELAY_S", "300"))
+    return SelfTest(clock or SystemClock(), mixer, interval_s=interval, first_delay_s=first)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -335,7 +415,9 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--udp-port", type=int, default=2242)
     args = p.parse_args(argv)
     configure("decoder-agent")
-    asyncio.run(Agent(udp_port=args.udp_port).serve(args.host, args.port))
+    asyncio.run(
+        Agent(udp_port=args.udp_port, selftest=selftest_from_env()).serve(args.host, args.port)
+    )
 
 
 if __name__ == "__main__":

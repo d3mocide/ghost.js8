@@ -80,6 +80,7 @@ class Components(_Model):
     decoder_process: Component  # JS8Call process running (and agent reachable)
     decoder_api: Component  # JS8Call UDP API answering (PING / request round trip)
     decoder_capture: Component  # JS8Call holds a live capture stream on its input
+    decoder_selftest: Component  # JS8Call still decodes a known-answer test frame (hourly)
     receiver: Component  # receiver session connected
     audio: Component  # fresh audio arriving from the receiver
     waterfall: Component  # fresh waterfall rows arriving

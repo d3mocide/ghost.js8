@@ -27,6 +27,7 @@ class Thresholds:
     waterfall_stale_s: float = 5.0
     decoder_report_stale_s: float = 10.0  # agent sends health every 3 s
     decoder_ping_stale_s: float = 40.0  # JS8Call PINGs every 15 s
+    selftest_overdue_factor: float = 2.5  # of the agent's own test interval
 
 
 @dataclass(slots=True)
@@ -109,6 +110,11 @@ class HealthTracker:
             decoder_process=self._component("decoder_process", proc, now),
             decoder_api=self._component("decoder_api", api, now),
             decoder_capture=self._component("decoder_capture", cap, now),
+            decoder_selftest=self._component(
+                "decoder_selftest",
+                self._decoder_selftest(now) if decoder_up else ("unknown", "decoder down", None),
+                now,
+            ),
             receiver=self._component("receiver", rx, now),
             audio=self._component("audio", audio, now),
             waterfall=self._component("waterfall", wf, now),
@@ -121,6 +127,8 @@ class HealthTracker:
             overall = "offline"
         else:
             overall = "degraded"
+        if overall == "listening" and components.decoder_selftest.state in ("degraded", "down"):
+            overall = "degraded"  # alive and listening, but not decoding what it should
         snap = Health(
             utc=now, overall=overall, components=components, last_decode_utc=self._last_decode_utc
         )
@@ -181,6 +189,26 @@ class HealthTracker:
             return ("down", "decoder is not capturing its audio input", facts.last_audio_write_utc)
         return ("ok", "", facts.last_audio_write_utc)
 
+    def _decoder_selftest(self, now: datetime) -> _Eval:
+        facts = self._decoder_facts
+        test = facts.selftest if facts is not None else None
+        if test is None:
+            return ("unknown", "decoder reports no self-test", None)
+        if test.state == "unknown":
+            return ("unknown", test.detail, None)
+        if test.state == "failed":
+            state: ComponentState = "down" if test.consecutive_failures >= 2 else "degraded"
+            return (state, test.detail, test.last_pass_utc)
+        if test.last_pass_utc is not None and test.interval_s > 0:
+            age = (now - test.last_pass_utc).total_seconds()
+            if age > test.interval_s * self._t.selftest_overdue_factor:
+                return (
+                    "degraded",
+                    f"self-test overdue: last passed {age / 60:.0f} min ago",
+                    test.last_pass_utc,
+                )
+        return ("ok", test.detail, test.last_pass_utc)
+
     def _receiver(self) -> _Eval:
         state, detail = self._receiver_state, self._receiver_detail
         since = self._receiver_since_utc
@@ -218,6 +246,7 @@ def _states(h: Health) -> tuple[str, ...]:
         c.decoder_process.state,
         c.decoder_api.state,
         c.decoder_capture.state,
+        c.decoder_selftest.state,
         c.receiver.state,
         c.audio.state,
         c.waterfall.state,

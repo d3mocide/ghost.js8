@@ -480,3 +480,44 @@ def test_http_endpoints() -> None:
         assert Health.model_validate(ready.json()).overall == "offline"
         directory = ReceiverDirectory.model_validate(http.get("/api/receivers").json())
         assert [r.host for r in directory.receivers] == ["192.0.2.1"]
+
+
+# ----------------------------------------------- decoder self-test hold (net windows)
+
+
+class HoldingDecoder(FakeDecoder):
+    def __init__(self, sink: DecoderSink) -> None:
+        super().__init__(sink)
+        self.holds: list[bool] = []
+
+    def set_selftest_hold(self, hold: bool) -> None:
+        self.holds.append(hold)
+
+
+class NullObserver:
+    def on_audio(self, block: object) -> None: ...
+    def on_waterfall(self, row: object) -> None: ...
+    def on_decode(self, decode: object) -> None: ...
+
+
+def test_station_holds_the_decoder_selftest_while_a_net_is_recording() -> None:
+    st = Station(
+        Hub(),
+        HoldingDecoder,
+        FakeReceiver,
+        clock=ManualClock(),
+        config=StationConfig(min_connect_interval_s=0),
+    )
+    decoder: HoldingDecoder = st.decoder  # type: ignore[assignment]
+    st._sync_selftest_hold()
+    observer = NullObserver()
+    st.observers.append(observer)  # type: ignore[arg-type]
+    st._sync_selftest_hold()
+    st.observers.remove(observer)  # type: ignore[arg-type]
+    st._sync_selftest_hold()
+    assert decoder.holds == [False, True, False]
+
+
+def test_station_copes_with_a_decoder_that_has_no_selftest() -> None:
+    st = station()
+    st._sync_selftest_hold()

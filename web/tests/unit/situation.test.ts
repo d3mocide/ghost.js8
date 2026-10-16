@@ -22,6 +22,7 @@ function health(
       decoder_process: ok,
       decoder_api: ok,
       decoder_capture: ok,
+      decoder_selftest: ok,
       receiver: ok,
       audio: ok,
       waterfall: ok,

@@ -85,6 +85,7 @@ rewrites the file on exit; we discard that). Environment:
 | `GHOSTJS8_UDP_PORT` | `2242` | JS8Call UDP API target on `127.0.0.1` |
 | `GHOSTJS8_FILTER_CENTER` | `1550` | decode filter center, Hz |
 | `GHOSTJS8_FILTER_WIDTH` | `2900` | decode filter width, Hz (100–3000 Hz) |
+| `GHOSTJS8_SELFTEST*` | on, hourly | known-answer decode test; see [`decoder-selftest.md`](decoder-selftest.md) |
 
 The filter **is** the decode range (`nfa`/`nfb` in `mainwindow.cpp`), so it must
 cover the receiver passband. All submodes are decoded (`SubModeMultiDecode`).

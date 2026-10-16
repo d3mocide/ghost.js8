@@ -35,7 +35,8 @@ KiwiSDR ─ SND ─→ bridge ─→ decoder-agent ─→ PulseAudio null sink �
 | `web/deploy/` | nginx template for the `web` image |
 | `tools/dev-stack.sh` | fake KiwiSDR + fake decoder-agent + real bridge, no Docker (`GHOSTNET=1 SEED_NET=1` for the autopilot + a seeded recording) |
 | `bridge/src/ghostjs8/ghostnet/` | GhostNet autopilot: `schedule` (plan v1.5 windows), `picker` (nearest receiver), `recorder` (FLAC + waterfall PNG), `pilot` ([`docs/ghostnet.md`](docs/ghostnet.md)) |
-| `decoder/` | Decoder container: Dockerfile, supervisor config, PulseAudio config, JS8Call ini template |
+| `decoder/` | Decoder container: Dockerfile, supervisor config, PulseAudio config, JS8Call ini template, self-test clip (`rootfs/usr/share/ghostjs8/selftest/`) |
+| `bridge/src/ghostjs8/decoders/js8call_native/selftest.py` | Agent-side known-answer decode self-test (mixer, canary filtering, state machine); [`docs/decoder-selftest.md`](docs/decoder-selftest.md) |
 | `tools/fake-kiwi/` | Simulated KiwiSDR server using real SND/W/F framing |
 | `tools/fixtures/` | Fetch + verify script for the GPL-3.0 upstream test recording (never vendored) |
 | `tools/acceptance/` | Real-recording end-to-end acceptance runner |
@@ -115,6 +116,15 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
 - Qt hides PulseAudio **monitor** sources from its input list. Expose the null
   sink's monitor via **`module-remap-source`** as an ordinary capture source.
 - JS8Call's own audio output goes to a separate **discard** sink.
+- Every health component said `ok` while a 4-day-old JS8Call decoded ~5 % of what a fresh
+  one did on the same recording (2026-10-16 net). Cause unknown; the idle-timeout
+  dialog is **not** it (it opens after 60 min, decoding stays level). The decoder
+  self-test (`docs/decoder-selftest.md`) is the guard. Its canary never leaves the agent:
+  if you add a new path that forwards decodes or call activity, route it through
+  `SelfTest.intercept`, or `@GHOSTNET`/`KB8JEP` will show up as real traffic.
+- Replaying audio through a throwaway stack is the way to ask "what *should* have
+  decoded?": `fake-kiwi --wav` (UTC-aligned, 12 kHz mono) + fresh decoder + bridge,
+  as in `docker-compose.test.yml`, on an isolated network.
 - JS8Call's UDP API: the agent listens on localhost and **learns the reply port**
   from incoming datagrams.
 - JS8Call blocks on a settings dialog if `MyCall` or `MyGrid` is empty; the

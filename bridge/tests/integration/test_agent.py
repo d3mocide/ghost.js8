@@ -10,7 +10,13 @@ from datetime import UTC, datetime
 
 import pytest
 
-from ghostjs8.decoders.base import DecodeEvent, DecoderHealth, DecoderUnavailable, SpotEvent
+from ghostjs8.decoders.base import (
+    DecodeEvent,
+    DecoderHealth,
+    DecoderUnavailable,
+    SelfTestFacts,
+    SpotEvent,
+)
 from ghostjs8.decoders.js8call_native import agent_protocol as proto
 from ghostjs8.decoders.js8call_native.adapter import Js8CallNativeDecoder
 from ghostjs8.decoders.js8call_native.agent import (
@@ -20,6 +26,7 @@ from ghostjs8.decoders.js8call_native.agent import (
     js8call_capturing,
     parse_supervisor_status,
 )
+from ghostjs8.decoders.js8call_native.selftest import Action, CanaryMixer, SelfTest
 from ghostjs8.util.clock import ManualClock
 
 
@@ -260,3 +267,158 @@ DIRECTED = {
         "UTC": 1791424811558,
     },
 }
+
+
+# ------------------------------------------------------------------ self-test
+
+
+def test_health_roundtrip_carries_the_selftest_facts() -> None:
+    t = datetime(2026, 10, 8, tzinfo=UTC)
+    facts = SelfTestFacts("failed", t, None, 2, 3600.0, "no canary decode")
+    h = DecoderHealth(True, True, t, None, t, 0, {}, facts)
+    assert proto.decode_health(json.loads(proto.encode_health(h, t))) == h
+
+
+def test_health_without_a_selftest_or_with_a_garbled_one_is_tolerated() -> None:
+    t = datetime(2026, 10, 8, tzinfo=UTC)
+    plain = json.loads(proto.encode_health(DecoderHealth(True, True, t, None, t), t))
+    assert plain["selftest"] is None
+    assert proto.decode_health(plain).selftest is None
+    plain["selftest"] = {"state": "weird", "consecutive_failures": "x", "interval_s": None}
+    garbled = proto.decode_health(plain).selftest
+    assert garbled is not None
+    assert (garbled.state, garbled.consecutive_failures, garbled.interval_s) == ("unknown", 0, 0.0)
+
+
+async def test_udp_api_swallows_canary_decodes_but_forwards_real_ones() -> None:
+    clock = ManualClock(datetime(2026, 1, 1, 0, 0, 3, tzinfo=UTC))
+    st = SelfTest(clock, CanaryMixer(b"\x00\x00" * 15 * 12000), first_delay_s=0, load=lambda: 0.0)
+    q: asyncio.Queue[str] = asyncio.Queue(maxsize=8)
+    api = Js8UdpApi(clock, q, st)
+    loop = asyncio.get_running_loop()
+    transport, _ = await loop.create_datagram_endpoint(lambda: api, local_addr=("127.0.0.1", 0))
+    port = transport.get_extra_info("sockname")[1]
+    js8 = js8_socket()
+    try:
+        st.step(ready=True, hold=False)
+        clock.advance(18)
+        canary = {"type": "RX.ACTIVITY", "value": "@GHOSTNET", "params": {"SNR": 3, "OFFSET": 1023}}
+        real = {"type": "RX.ACTIVITY", "value": "K0OG: HELLO", "params": {"SNR": 3, "OFFSET": 900}}
+        for msg in (canary, real):
+            js8.sendto(json.dumps(msg).encode(), ("127.0.0.1", port))
+        await asyncio.sleep(0.1)
+        forwarded = [json.loads(q.get_nowait())["msg"]["value"] for _ in range(q.qsize())]
+        assert forwarded == ["K0OG: HELLO"]
+        assert st.facts().state == "unknown"  # not judged until the next step()
+        st.step(ready=True, hold=False)
+        assert st.facts().state == "ok"
+    finally:
+        js8.close()
+        transport.close()
+
+
+class StubSelfTest:
+    """Stands in for SelfTest to watch what the agent does with it."""
+
+    def __init__(self, first: Action) -> None:
+        self.first = first
+        self.calls: list[tuple[bool, bool]] = []
+
+    def step(self, *, ready: bool, hold: bool) -> Action:
+        self.calls.append((ready, hold))
+        return self.first if len(self.calls) == 1 else Action.NONE
+
+    def facts(self) -> SelfTestFacts:
+        return SelfTestFacts("ok", None, None, 0, 3600.0)
+
+    def mix(self, block: bytes, now: datetime) -> bytes:
+        return block
+
+    def intercept(self, message: dict[str, object], now: datetime) -> bool:
+        return False
+
+
+async def test_bridge_hold_reaches_the_agent_and_restart_action_runs() -> None:
+    async def probe() -> tuple[bool, bool]:
+        return True, True
+
+    restarts: list[int] = []
+
+    async def restart() -> None:
+        restarts.append(1)
+
+    stub = StubSelfTest(Action.RESTART_DECODER)
+    pcm = PcmSink(
+        ManualClock(), command=(sys.executable, "-c", "import sys; sys.stdin.buffer.read()")
+    )
+    agent = Agent(
+        udp_port=0,
+        pcm=pcm,
+        probe=probe,
+        health_interval_s=0.05,
+        selftest=stub,  # type: ignore[arg-type]
+        restart=restart,
+    )
+    ws_port = free_port()
+    agent_task = asyncio.create_task(agent.serve("127.0.0.1", ws_port))
+    await asyncio.sleep(0.2)
+    sink = Collect()
+    dec = Js8CallNativeDecoder(f"ws://127.0.0.1:{ws_port}/agent", sink)
+    dec_task = asyncio.create_task(dec.run())
+    try:
+        async with asyncio.timeout(5):
+            while not (dec.connected and sink.health):
+                await asyncio.sleep(0.02)
+        assert agent.selftest_hold is False
+        dec.set_selftest_hold(True)
+        async with asyncio.timeout(5):
+            while not agent.selftest_hold:
+                await asyncio.sleep(0.02)
+        dec.set_selftest_hold(False)
+        async with asyncio.timeout(5):
+            while agent.selftest_hold:
+                await asyncio.sleep(0.02)
+        async with asyncio.timeout(5):  # the agent's loop ticks once a second
+            while not restarts:
+                await asyncio.sleep(0.05)
+        assert restarts == [1]
+        assert sink.health[-1].selftest is not None
+        assert sink.health[-1].selftest.state == "ok"
+    finally:
+        dec_task.cancel()
+        agent_task.cancel()
+        await asyncio.gather(dec_task, agent_task, return_exceptions=True)
+
+
+async def test_a_reconnecting_adapter_resends_the_hold() -> None:
+    async def probe() -> tuple[bool, bool]:
+        return True, True
+
+    agent = Agent(udp_port=0, probe=probe, health_interval_s=0.05)
+    ws_port = free_port()
+    agent_task = asyncio.create_task(agent.serve("127.0.0.1", ws_port))
+    await asyncio.sleep(0.2)
+    first = Js8CallNativeDecoder(f"ws://127.0.0.1:{ws_port}/agent", Collect())
+    first.set_selftest_hold(True)
+    first_task = asyncio.create_task(first.run())
+    try:
+        async with asyncio.timeout(5):
+            while not agent.selftest_hold:
+                await asyncio.sleep(0.02)
+        first_task.cancel()
+        await asyncio.gather(first_task, return_exceptions=True)
+        # a new adapter that already knows it must hold sends it on connect
+        second = Js8CallNativeDecoder(f"ws://127.0.0.1:{ws_port}/agent", Collect())
+        agent.selftest_hold = False
+        second.set_selftest_hold(True)
+        second_task = asyncio.create_task(second.run())
+        try:
+            async with asyncio.timeout(5):
+                while not agent.selftest_hold:
+                    await asyncio.sleep(0.02)
+        finally:
+            second_task.cancel()
+            await asyncio.gather(second_task, return_exceptions=True)
+    finally:
+        agent_task.cancel()
+        await asyncio.gather(agent_task, return_exceptions=True)

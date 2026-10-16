@@ -131,6 +131,9 @@
         "decoder_capture": {
           "$ref": "#/$defs/Component"
         },
+        "decoder_selftest": {
+          "$ref": "#/$defs/Component"
+        },
         "receiver": {
           "$ref": "#/$defs/Component"
         },
@@ -147,6 +150,7 @@
         "decoder_api",
         "decoder_capture",
         "decoder_process",
+        "decoder_selftest",
         "receiver",
         "waterfall"
       ],

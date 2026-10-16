@@ -39,10 +39,18 @@ class Js8CallNativeDecoder:
         self._connect_timeout_s = connect_timeout_s
         self._ws: ClientConnection | None = None
         self.dropped_audio_blocks = 0
+        self._selftest_hold = False
+        self._hold_changed = asyncio.Event()
 
     @property
     def connected(self) -> bool:
         return self._ws is not None
+
+    def set_selftest_hold(self, hold: bool) -> None:
+        """Ask the agent not to inject its self-test frame (a GhostNet window is recording)."""
+        if hold != self._selftest_hold:
+            self._selftest_hold = hold
+            self._hold_changed.set()
 
     def submit_audio(self, pcm_s16le: bytes) -> None:
         """Queue PCM for the decoder. Never blocks; drops oldest when full or offline."""
@@ -67,6 +75,7 @@ class Js8CallNativeDecoder:
             await ws.send(json.dumps({"t": "hello", "bridge": __version__}))
             async with asyncio.TaskGroup() as tg:
                 tg.create_task(self._send_audio(ws))
+                tg.create_task(self._send_control(ws))
                 tg.create_task(self._receive(ws))
         except* ConnectionClosed as eg:
             raise DecoderUnavailable(f"decoder agent link closed: {eg.exceptions[0]}") from None
@@ -81,6 +90,16 @@ class Js8CallNativeDecoder:
     async def _send_audio(self, ws: ClientConnection) -> None:
         while True:
             await ws.send(await self._audio.get())
+
+    async def _send_control(self, ws: ClientConnection) -> None:
+        sent: bool | None = None  # a new agent connection starts with no hold: always resend
+        while True:
+            self._hold_changed.clear()
+            hold = self._selftest_hold
+            if hold != sent:
+                await ws.send(proto.encode_selftest_hold(hold))
+                sent = hold
+            await self._hold_changed.wait()
 
     async def _receive(self, ws: ClientConnection) -> None:
         async for raw in ws:
