@@ -17,6 +17,42 @@ test.describe('ghost.js8 smoke', () => {
     await expect(page.getByTestId('station-row').first()).toBeVisible({ timeout: 20_000 });
   });
 
+  test('is installable as an app: manifest, icons and favicons are served', async ({ page }) => {
+    await page.goto('/');
+    const href = await page.locator('link[rel="manifest"]').getAttribute('href');
+    expect(href).toBe('/manifest.webmanifest');
+    const res = await page.request.get(href ?? '');
+    expect(res.status()).toBe(200);
+    const manifest = (await res.json()) as { name: string; icons: { src: string; type: string }[] };
+    expect(manifest.name).toBe('ghost.js8');
+    for (const icon of manifest.icons) {
+      const r = await page.request.get(icon.src);
+      expect(r.status(), icon.src).toBe(200);
+      expect(r.headers()['content-type'], icon.src).toContain(icon.type);
+    }
+    for (const path of ['/favicon.ico', '/apple-touch-icon.png', '/icons/favicon-32.png']) {
+      expect((await page.request.get(path)).status(), path).toBe(200);
+    }
+  });
+
+  // Not Page.getInstallabilityErrors: headless Chromium returns [] even for a manifest with no
+  // icons, so it proves nothing. What can be checked is that the browser found and parsed ours.
+  test('Chromium finds and parses the manifest without errors', async ({ page, context }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('link-state')).toContainText('LINK ESTABLISHED');
+    const cdp = await context.newCDPSession(page);
+    const mf = (await cdp.send('Page.getAppManifest')) as {
+      url?: string;
+      errors: unknown[];
+      data?: string;
+    };
+    expect(mf.url ?? '').toContain('/manifest.webmanifest');
+    expect(mf.errors).toEqual([]);
+    const parsed = JSON.parse(mf.data ?? '{}') as { name?: string; icons?: unknown[] };
+    expect(parsed.name).toBe('ghost.js8');
+    expect(parsed.icons?.length ?? 0).toBeGreaterThanOrEqual(3);
+  });
+
   test('has no transmit control anywhere', async ({ page, isMobile }) => {
     await page.goto('/');
     await expect(page.getByTestId('link-state')).toContainText('LINK ESTABLISHED');

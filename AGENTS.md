@@ -33,6 +33,7 @@ KiwiSDR ─ SND ─→ bridge ─→ decoder-agent ─→ PulseAudio null sink �
 | `web/src/lib/backdrop/` | ASCII backdrop engine (`ascii.ts`, pure helpers unit-tested) + per-viewer mode preference |
 | `web/src/styles/tokens.css` | Design tokens: the single source for colour, glass, radii, spacing, type, motion |
 | `web/deploy/` | nginx template for the `web` image |
+| `web/public/` | Static files: `favicon.svg` (the mark), generated icons (`icons/`, `apple-touch-icon.png`, `favicon.ico`), `manifest.webmanifest`. Regenerate rasters with `npm run icons` |
 | `tools/dev-stack.sh` | fake KiwiSDR + fake decoder-agent + real bridge, no Docker (`GHOSTNET=1 SEED_NET=1` for the autopilot + a seeded recording) |
 | `bridge/src/ghostjs8/ghostnet/` | GhostNet autopilot: `schedule` (plan v1.5 windows), `picker` (nearest receiver), `recorder` (FLAC + waterfall PNG), `pilot` ([`docs/ghostnet.md`](docs/ghostnet.md)) |
 | `decoder/` | Decoder container: Dockerfile, supervisor config, PulseAudio config, JS8Call ini template, self-test clip (`rootfs/usr/share/ghostjs8/selftest/`) |
@@ -122,6 +123,11 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
   self-test (`docs/decoder-selftest.md`) is the guard. Its canary never leaves the agent:
   if you add a new path that forwards decodes or call activity, route it through
   `SelfTest.intercept`, or `@GHOSTNET`/`KB8JEP` will show up as real traffic.
+- PWA: the manifest link needs `crossorigin="use-credentials"` (the app sits behind an
+  authenticating proxy). Do **not** trust `Page.getInstallabilityErrors` in headless
+  Chromium: it returns `[]` even for a manifest with no icons. `tests/node/pwa.test.ts`
+  checks the documented install criteria against the shipped files instead (that folder
+  has its own tsconfig with Node types; the root one deliberately has none).
 - A new client/server wire model must be listed in `contract/generate.py` (`SERVER`/`CLIENT`),
   or the schema references it without defining it and `make contract` fails. The generated
   TypeScript requires every field: send explicit `null`s (see `settingsMessage()`).

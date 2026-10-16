@@ -18,7 +18,8 @@ export default defineConfig({
   optimizeDeps: { exclude: ['maplibre-gl'] },
   build: { target: 'es2023', sourcemap: true },
   test: {
-    include: ['tests/unit/**/*.test.ts'],
+    // tests/node reads shipped files (manifest, icons); it has its own tsconfig with Node types.
+    include: ['tests/unit/**/*.test.ts', 'tests/node/**/*.test.ts'],
     environment: 'node',
   },
 });

@@ -51,6 +51,14 @@ server {
         proxy_pass $bridge;
     }
 
+    # Browsers want application/manifest+json for the PWA manifest; do not trust mime.types.
+    location = /manifest.webmanifest {
+        default_type application/manifest+json;
+        add_header Cache-Control "no-cache" always;
+        include /etc/nginx/snippets/security-headers.conf;
+        try_files $uri =404;
+    }
+
     # Many nginx mime.types lack .mjs; module workers (MapLibre) refuse
     # application/octet-stream under nosniff.
     location ~* \.mjs$ {

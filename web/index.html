@@ -9,7 +9,19 @@
       content="ghost.js8: JS8 ops console for KiwiSDR receivers and GhostNet"
     />
     <meta name="theme-color" content="#05060a" />
+    <!-- Icons: SVG for modern browsers, ICO/PNG fallbacks, apple-touch-icon for iOS/Safari
+         (which ignore SVG and the manifest icons). Regenerate with `npm run icons`. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- use-credentials: the app sits behind an authenticating reverse proxy, and a manifest
+         fetched without credentials is a 401, which silently breaks installing. -->
+    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ghost.js8" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <title>ghost.js8</title>
   </head>
   <body>

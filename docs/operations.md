@@ -79,6 +79,28 @@ set `proxy_read_timeout 3600s;`.
 Set `GHOSTJS8_ALLOWED_ORIGINS=https://ghost.example.net` so other sites cannot
 open the WebSocket from a visitor's browser.
 
+### Installing as an app (PWA)
+
+The UI ships a web app manifest and icons, so a browser can install it as a standalone
+window with the ghost icon:
+
+- **Chrome / Edge (desktop, Android):** the install button in the address bar, or menu →
+  *Install ghost.js8* / *Add to Home screen*.
+- **iOS / iPadOS Safari:** Share → *Add to Home Screen* (iOS ignores the manifest icons and
+  uses `apple-touch-icon.png`).
+- It needs HTTPS (or `localhost`), which your reverse proxy provides. There is no service
+  worker: the console is live-only, so there is nothing useful to cache offline.
+- The manifest link is `crossorigin="use-credentials"`. Behind a proxy that asks for a login
+  (basic auth, Authelia, ...) a manifest fetched without credentials is a 401 and the browser
+  silently drops the PWA. Keep `/manifest.webmanifest` and the icons behind the same login as
+  the rest of the site, not on an anonymous path.
+- To check a device: Chrome DevTools → *Application* → *Manifest* lists the manifest, its
+  icons (including the maskable one) and any problem.
+
+The icons are rendered from `web/public/favicon.svg` by `npm --prefix web run icons`
+(Chromium required; the Playwright image has it). Rerun it only when the mark changes, and
+commit the output.
+
 ### Multiple receivers
 
 JS8Call takes one audio input per instance, so one decoder container decodes
