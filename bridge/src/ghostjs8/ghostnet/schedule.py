@@ -1,6 +1,9 @@
 """The GhostNet v1.5 JS8Call comm windows, as data.
 
-Source: "GhostNet Version 1.5", S2 Underground (CC BY-NC-SA 4.0), pages 12-18.
+Source: "GhostNet Version 1.5", S2 Underground (CC BY-NC-SA 4.0), pages 12-18:
+https://github.com/s2underground/GhostNet (GhostNet_Version_1.5.pdf). Every window below was
+checked against those pages on 2026-10-16: the Saturday data bridges *are* JS8Call nets on
+14.107 / 3.575 / 7.107 MHz; the Ion2G ALE slots that follow some of them are not listed.
 Only the JS8Call windows are listed; Winlink, RTTY, ALE and voice windows are
 other modes this project does not decode.
 

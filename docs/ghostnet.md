@@ -52,6 +52,13 @@ come from `bridge/src/ghostjs8/ghostnet/schedule.py`.
 | AUS–South Pacific data bridge | Sat 08:00–09:00 | 14.107 MHz | aus |
 | AUS–South Pacific data bridge (40 m) | Sat 09:00–09:30 | 7.107 MHz | aus |
 
+The plan is S2 Underground's *GhostNet Version 1.5* (CC BY-NC-SA 4.0), pages 12–18:
+<https://github.com/s2underground/GhostNet>. It specifies the frequencies and times, not a
+JS8 speed, so the decoder listens to every submode. The Ion2G ALE slots that follow some of the
+data bridges, the Winlink P2P (VARA) slots and the RTTY frequency (7.077 MHz) are other modes and
+are not followed. Expect a bridge to carry non-JS8 traffic on 14.107 MHz as well: on 2026-10-10
+the NA–EU window held RTTY-like signals (two tones about 170 Hz apart) and no decodable JS8.
+
 All windows use USB with a 100–3000 Hz passband, which matches the JS8Call
 decode filter. If the plan changes, edit `PLAN` and its tests.
 
