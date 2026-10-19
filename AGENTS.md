@@ -178,6 +178,10 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
   connections all ~400 of them fail together, so the picker ranks direct receivers
   first, `ReceiverPicker.bench_host()` benches the whole group after a connect
   failure, and the UI hides proxied receivers by default (`isProxied()`).
+- Some receivers serve SND but never send W/F rows (`k4ega.ddns.net`, 2026-10-19: waterfall
+  stale for 40+ min while decodes kept flowing). `KiwiReceiver._wf_watchdog` fails the session
+  with `ReceiverTimeout` after `wf_timeout_s` (30 s) without a row once audio has started, so the
+  station reconnects and the autopilot can move on. `fake-kiwi` `wf_rows_per_s=0` reproduces it.
 - `SelectReceiver.receiver.tls` must be forwarded into `ReceiverTarget`, or
   HTTPS-only receivers picked in the UI connect over plain `ws`.
 - Desktop layout: left GhostNet/Receiver/Audio; centre Traffic, tuning strip,

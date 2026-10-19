@@ -58,7 +58,7 @@ class FakeKiwiConfig:
     align_utc_s: int = 0  # align playback starts to this boundary (15 for JS8); 0 = immediate
     repeats: int = 1
     repeat_gap_s: int = 15  # extra boundaries between repeats
-    wf_rows_per_s: float = 10.0
+    wf_rows_per_s: float = 10.0  # 0 = accept the W/F stream but never send a row (fault)
     bandwidth_hz: int = 30_000_000
 
 
@@ -271,8 +271,12 @@ class FakeKiwi:
         reader = asyncio.create_task(self._drain(ws, slog))
         try:
             seq = 0
-            period = 1.0 / self.config.wf_rows_per_s
+            rate = self.config.wf_rows_per_s
+            period = 1.0 / rate if rate > 0 else 0.1
             while sid in self._snd_sessions:
+                if rate <= 0:
+                    await asyncio.sleep(period)
+                    continue
                 zoom, x_bin = _view(slog, self.config.bandwidth_hz)
                 await ws.send(
                     _synthetic_wf_row(

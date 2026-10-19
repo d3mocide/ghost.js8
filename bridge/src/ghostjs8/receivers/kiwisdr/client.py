@@ -162,6 +162,7 @@ class KiwiReceiver:
         clock: Clock | None = None,
         connect_timeout_s: float = 10.0,
         handshake_timeout_s: float = 15.0,
+        wf_timeout_s: float = 30.0,
         keepalive_interval_s: float = 2.0,
         compression_grace_s: float = COMPRESSION_GRACE_S,
         connector: Connector = _default_connector,
@@ -178,6 +179,7 @@ class KiwiReceiver:
         )
         self._connect_timeout_s = connect_timeout_s
         self._handshake_timeout_s = handshake_timeout_s
+        self._wf_timeout_s = wf_timeout_s
         self._keepalive_interval_s = keepalive_interval_s
         self._compression_grace_s = compression_grace_s
         self._closing = False
@@ -186,6 +188,7 @@ class KiwiReceiver:
         self._snd: ClientConnection | None = None
         self._wf: ClientConnection | None = None
         self._audio_started = asyncio.Event()
+        self._wf_row = asyncio.Event()
         self._compression_off_at: float | None = None
         self._bandwidth_hz = DEFAULT_BANDWIDTH_HZ
         self._freq_offset_hz = 0
@@ -231,6 +234,7 @@ class KiwiReceiver:
                     if self._wf is not None:
                         tg.create_task(self._read_wf(self._wf))
                         tg.create_task(self._keepalive(self._wf))
+                        tg.create_task(self._wf_watchdog())
             except* ReceiverError as eg:
                 first = eg.exceptions[0]
                 failure = first if isinstance(first, ReceiverError) else None
@@ -290,6 +294,25 @@ class KiwiReceiver:
             raise ReceiverTimeout(
                 f"no audio within {self._handshake_timeout_s:.0f}s of connecting"
             ) from exc
+
+    async def _wf_watchdog(self) -> None:
+        """Fail the session when audio flows but the waterfall does not.
+
+        Some receivers serve SND and then never answer on W/F (or stop part way
+        through). Audio alone would keep the session looking healthy forever
+        while the waterfall stays stale, so treat it as a failed session and let
+        the station reconnect (and the autopilot pick another receiver).
+        """
+        await self._audio_started.wait()
+        while True:
+            self._wf_row.clear()
+            try:
+                async with asyncio.timeout(self._wf_timeout_s):
+                    await self._wf_row.wait()
+            except TimeoutError as exc:
+                raise ReceiverTimeout(
+                    f"no waterfall rows for {self._wf_timeout_s:.0f}s while audio is flowing"
+                ) from exc
 
     # ---------------------------------------------------------------- SND
 
@@ -391,6 +414,7 @@ class KiwiReceiver:
             self._bad_frame(MalformedFrame(f"W/F row has {len(frame.bins)} bins, expected 1024"))
             return
         self.stats["wf_frames"] += 1
+        self._wf_row.set()
         self.sink.on_waterfall(
             WaterfallRow(
                 seq=frame.seq,

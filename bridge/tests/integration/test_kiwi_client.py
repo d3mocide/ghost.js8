@@ -206,6 +206,16 @@ async def test_handshake_timeout() -> None:
             await receiver(kiwi, Sink(), handshake_timeout_s=0.5).run()
 
 
+async def test_silent_waterfall_times_out(tmp_path: Path) -> None:
+    tone_wav(tmp_path / "t.wav")
+    sink = Sink()
+    async with fake(wav=tmp_path / "t.wav", wf_rows_per_s=0, repeats=100) as kiwi:
+        with pytest.raises(ReceiverTimeout, match="waterfall"):
+            await receiver(kiwi, sink, wf_timeout_s=0.5).run()
+    assert sink.audio
+    assert not sink.rows
+
+
 async def test_refused_port_is_unreachable() -> None:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
