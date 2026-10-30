@@ -6,7 +6,7 @@ SHELL := /bin/bash
 UV  := uv --directory bridge
 NPM := npm --prefix web
 
-.PHONY: setup lint typecheck test check contract contract-check acceptance decoder-image fixtures e2e images up down
+.PHONY: setup lint typecheck test check contract contract-check acceptance decoder-image fixtures e2e images dev pull up down
 
 setup:
 	$(UV) sync --locked --all-extras
@@ -54,11 +54,21 @@ decoder-image:
 e2e:
 	cd web && npx playwright test
 
+COMPOSE_DEV := COMPOSE_BAKE=false EXTRA_CA=$(EXTRA_CA) docker compose -f docker-compose.yml -f docker-compose.dev.yml
+
+# Build the stack from this checkout (dev); `make dev` runs those local images.
 images:
-	COMPOSE_BAKE=false EXTRA_CA=$(EXTRA_CA) docker compose build
+	$(COMPOSE_DEV) build
+
+dev:
+	$(COMPOSE_DEV) up -d --build
+
+# Production: pull the published images (GHOSTJS8_TAG, default latest) and start.
+pull:
+	docker compose pull
 
 up:
-	COMPOSE_BAKE=false docker compose up -d
+	docker compose up -d
 
 down:
 	docker compose down

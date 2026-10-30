@@ -3,7 +3,26 @@
 All notable changes. Versions follow SemVer; the protocol version (`v`) is
 tracked separately in `docs/protocol.md`.
 
-## [0.1.0] — unreleased
+## [0.2.0] — 2026-10-30
+
+- **Compose now pulls the published images by default** (`ghcr.io/d3mocide/ghostjs8-*`,
+  tag from `GHOSTJS8_TAG`, default `latest`). `docker-compose.dev.yml` adds the
+  `build:` blocks; use `make images && make dev` to build from source and
+  `make pull && make up` to deploy.
+- Decoder self-test: a known-answer clip is decoded through the real JS8Call to
+  prove it is still decoding, reported as `decoder_selftest` health. Its canary
+  never leaves the agent.
+- GhostNet autopilot is configured from the app (master switch, park, record
+  audio, per-window follow and preferred receiver) and persisted.
+- The autopilot keeps a working receiver and benches silent ones; the bridge
+  reconnects when a receiver serves audio but no waterfall rows.
+- Receiver picker sorts by distance and hides proxied receivers; viewer-chosen
+  HTTPS receivers keep TLS.
+- Installable PWA with real icons. Traffic Threads view, station map with
+  rings and night shade, Heard-stations history, receiver drawer and GhostNet
+  card, live decode counts for the net in progress.
+
+## [0.1.0] — 2026-10-08
 
 First MVP.
 

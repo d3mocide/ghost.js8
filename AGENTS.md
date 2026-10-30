@@ -59,7 +59,8 @@ Run from the repo root.
 | `make fixtures` | fetch + SHA-256-verify the upstream test recording into `tools/fixtures/cache/` |
 | `make acceptance` | real-recording end-to-end test in Docker (`docker-compose.test.yml`, isolated network) |
 | `make e2e` | Playwright (desktop + phone) against the simulated stack; set `PW_CHROMIUM_PATH` to use a preinstalled Chromium |
-| `make images` / `make up` / `make down` | production compose build / start / stop |
+| `make pull` / `make up` / `make down` | production: pull published GHCR images (`GHOSTJS8_TAG`, default `latest`) / start / stop |
+| `make images` / `make dev` | dev: build from source via `docker-compose.dev.yml` (images tagged `ghostjs8-*:local`) |
 | `git tag vX.Y.Z && git push --tags` | release: CI publishes multi-arch (amd64 + arm64) images to GHCR (`.github/workflows/release.yml`) |
 | `tools/dev-stack.sh` + `npm --prefix web run dev` | UI development against the simulated stack |
 

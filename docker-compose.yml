@@ -1,14 +1,11 @@
 # ghost.js8 — JS8 ops console (current builds are receive-only).
-#   cp .env.example .env && docker compose up -d --build
-# Or use published multi-arch images (amd64/arm64) instead of building:
-#   GHOSTJS8_IMAGE_PREFIX=ghcr.io/d3mocide/ghostjs8 GHOSTJS8_TAG=0.1.0 \
-#     docker compose pull && docker compose up -d --no-build
+#   cp .env.example .env && docker compose pull && docker compose up -d
+# This file is the production stack: it only pulls the published multi-arch images
+# (amd64/arm64) from GHCR. Pin a release with GHOSTJS8_TAG (default: latest).
+# To build from source, layer docker-compose.dev.yml (`make images && make dev`).
 # Put your reverse proxy (NPM / Caddy) in front of the web port; it terminates TLS
 # and should handle authentication (see docs/operations.md).
 name: ghostjs8
-
-x-build-secrets: &build-secrets
-  secrets: [extra_ca]
 
 # No container needs extra privileges: drop every capability and forbid gaining any.
 x-hardened: &hardened
@@ -18,10 +15,7 @@ x-hardened: &hardened
 services:
   web:
     <<: *hardened
-    image: ${GHOSTJS8_IMAGE_PREFIX:-ghostjs8}-web:${GHOSTJS8_TAG:-local}
-    build:
-      context: web
-      <<: *build-secrets
+    image: ${GHOSTJS8_IMAGE_PREFIX:-ghcr.io/d3mocide/ghostjs8}-web:${GHOSTJS8_TAG:-latest}
     ports:
       - "${GHOSTJS8_HTTP_BIND:-127.0.0.1}:${GHOSTJS8_HTTP_PORT:-8080}:8080"
     depends_on:
@@ -31,10 +25,7 @@ services:
 
   bridge:
     <<: *hardened
-    image: ${GHOSTJS8_IMAGE_PREFIX:-ghostjs8}-bridge:${GHOSTJS8_TAG:-local}
-    build:
-      context: bridge
-      <<: *build-secrets
+    image: ${GHOSTJS8_IMAGE_PREFIX:-ghcr.io/d3mocide/ghostjs8}-bridge:${GHOSTJS8_TAG:-latest}
     env_file:
       - path: .env
         required: false
@@ -52,11 +43,7 @@ services:
 
   decoder:
     <<: *hardened
-    image: ${GHOSTJS8_IMAGE_PREFIX:-ghostjs8}-decoder:${GHOSTJS8_TAG:-local}
-    build:
-      context: .
-      dockerfile: decoder/Dockerfile
-      <<: *build-secrets
+    image: ${GHOSTJS8_IMAGE_PREFIX:-ghcr.io/d3mocide/ghostjs8}-decoder:${GHOSTJS8_TAG:-latest}
     restart: unless-stopped  # a FATAL critical process exits 70 and is restarted
     networks: [decoder]       # no egress: JS8Call never reaches the internet
 
@@ -67,7 +54,3 @@ networks:
   edge: {}
   decoder:
     internal: true
-
-secrets:
-  extra_ca:
-    file: ${EXTRA_CA:-./tools/acceptance/no-extra-ca.pem}

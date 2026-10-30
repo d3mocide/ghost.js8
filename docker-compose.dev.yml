@@ -1,0 +1,27 @@
+# Development override: build the images from this checkout instead of pulling.
+#   make images && make dev      (= docker compose -f docker-compose.yml -f docker-compose.dev.yml ...)
+# Images are tagged ghostjs8-*:local so they never shadow the published ones.
+x-build-secrets: &build-secrets
+  secrets: [extra_ca]
+
+services:
+  web:
+    image: ghostjs8-web:local
+    build:
+      context: web
+      <<: *build-secrets
+  bridge:
+    image: ghostjs8-bridge:local
+    build:
+      context: bridge
+      <<: *build-secrets
+  decoder:
+    image: ghostjs8-decoder:local
+    build:
+      context: .
+      dockerfile: decoder/Dockerfile
+      <<: *build-secrets
+
+secrets:
+  extra_ca:
+    file: ${EXTRA_CA:-./tools/acceptance/no-extra-ca.pem}

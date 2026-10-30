@@ -48,7 +48,7 @@ nginx or Node security advisory, even without code changes, so the decoder's
 apt packages and base layers stay current:
 
 ```sh
-git pull && make images && make up
+git pull && make pull && make up
 ```
 
 ## Reporting a vulnerability

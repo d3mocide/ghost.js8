@@ -4,9 +4,13 @@
 
 ```sh
 cp .env.example .env        # set GHOSTJS8_ALLOWED_ORIGINS, optionally a boot receiver
-make images                 # or: docker compose build   (EXTRA_CA=... behind a TLS proxy)
+make pull                   # docker compose pull   (published images from GHCR)
 make up                     # docker compose up -d
 ```
+
+To build from this checkout instead (development), use `make images && make dev`
+(`EXTRA_CA=... ` behind a TLS proxy). That layers `docker-compose.dev.yml`, which
+adds the `build:` blocks and tags the images `ghostjs8-*:local`.
 
 Only the `web` container publishes a port (default `127.0.0.1:8080`). Point
 your reverse proxy at it; it terminates TLS and handles authentication.
@@ -15,21 +19,18 @@ your reverse proxy at it; it terminates TLS and handles authentication.
 
 Tagged releases publish multi-arch images (`linux/amd64` and `linux/arm64`) to
 GHCR. ARM means a Raspberry Pi 4/5 on a **64-bit** OS, Apple Silicon or ARM
-cloud servers; there is no 32-bit ARM build of JS8Call. To run them instead
-of building:
+cloud servers; there is no 32-bit ARM build of JS8Call. `docker-compose.yml`
+only pulls these images (`ghcr.io/d3mocide/ghostjs8-{web,bridge,decoder}`). The
+tag defaults to `latest`, the newest release; pin one in `.env` for rollbacks:
 
 ```sh
-# in .env
-GHOSTJS8_IMAGE_PREFIX=ghcr.io/d3mocide/ghostjs8
 GHOSTJS8_TAG=0.1.0
 ```
 
-```sh
-docker compose pull && docker compose up -d --no-build
-```
-
-Building locally on an ARM host works too (`make images`); the decoder picks
-the matching JS8Call build automatically.
+The GHCR packages must be public, or the host needs `docker login ghcr.io`.
+Deploys move only when a `vX.Y.Z` tag is pushed. Building locally on an ARM
+host works too (`make images`); the decoder picks the matching JS8Call build
+automatically.
 
 ### Receivers on your LAN
 

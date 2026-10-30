@@ -37,7 +37,7 @@ KiwiSDR ─ SND ─▶ bridge ─▶ decoder-agent ─▶ PulseAudio ─▶ JS8C
 ```sh
 git clone https://github.com/d3mocide/ghost.js8 && cd ghost.js8
 cp .env.example .env          # set GHOSTJS8_ALLOWED_ORIGINS
-docker compose up -d --build  # UI on http://127.0.0.1:8080
+docker compose pull && docker compose up -d # UI on http://127.0.0.1:8080
 ```
 
 To monitor GhostNet unattended, add three lines to `.env` ([details](docs/ghostnet.md)):
@@ -48,7 +48,7 @@ GHOSTJS8_GHOSTNET_REGION=na    # na | eu | aus
 GHOSTJS8_HOME_GRID=EM73        # your Maidenhead grid
 ```
 
-Runs on **amd64 and 64-bit ARM** (Raspberry Pi 4/5 on a 64-bit OS, Apple Silicon, ARM servers). Releases publish multi-arch images, so you can pull instead of build: set `GHOSTJS8_IMAGE_PREFIX=ghcr.io/d3mocide/ghostjs8` and `GHOSTJS8_TAG` in `.env`, then run `docker compose pull && docker compose up -d --no-build`.
+Runs on **amd64 and 64-bit ARM** (Raspberry Pi 4/5 on a 64-bit OS, Apple Silicon, ARM servers). Releases publish multi-arch images and `docker-compose.yml` pulls them (`make pull && make up`; pin a release with `GHOSTJS8_TAG` in `.env`). To build from source, use `make images && make dev`.
 
 Put a reverse proxy in front for TLS and authentication ([operations](docs/operations.md)). Keep the host NTP-synced, because JS8 decoding depends on accurate time.
 
