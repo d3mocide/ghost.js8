@@ -408,7 +408,10 @@ async def test_a_reconnecting_adapter_resends_the_hold() -> None:
     async def probe() -> tuple[bool, bool]:
         return True, True
 
-    agent = Agent(udp_port=0, probe=probe, health_interval_s=0.05)
+    pcm = PcmSink(
+        ManualClock(), command=(sys.executable, "-c", "import sys; sys.stdin.buffer.read()")
+    )
+    agent = Agent(udp_port=0, pcm=pcm, probe=probe, health_interval_s=0.05)
     ws_port = free_port()
     agent_task = asyncio.create_task(agent.serve("127.0.0.1", ws_port))
     await wait_listening(ws_port)
