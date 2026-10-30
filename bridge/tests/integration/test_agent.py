@@ -189,6 +189,20 @@ def free_port() -> int:
         return int(s.getsockname()[1])
 
 
+async def wait_listening(port: int, timeout_s: float = 10.0) -> None:
+    """Block until the agent accepts TCP connections (a fixed sleep races slow CI runners)."""
+    async with asyncio.timeout(timeout_s):
+        while True:
+            try:
+                _, writer = await asyncio.open_connection("127.0.0.1", port)
+            except OSError:
+                await asyncio.sleep(0.02)
+                continue
+            writer.close()
+            await writer.wait_closed()
+            return
+
+
 async def test_agent_end_to_end_with_bridge_adapter() -> None:
     async def probe() -> tuple[bool, bool]:
         return True, True
@@ -202,7 +216,7 @@ async def test_agent_end_to_end_with_bridge_adapter() -> None:
     )
     ws_port = free_port()
     agent_task = asyncio.create_task(agent.serve("127.0.0.1", ws_port))
-    await asyncio.sleep(0.2)
+    await wait_listening(ws_port)
     udp_port = agent.udp._transport.get_extra_info("sockname")[1]  # type: ignore[union-attr]
 
     sink = Collect()
@@ -361,7 +375,7 @@ async def test_bridge_hold_reaches_the_agent_and_restart_action_runs() -> None:
     )
     ws_port = free_port()
     agent_task = asyncio.create_task(agent.serve("127.0.0.1", ws_port))
-    await asyncio.sleep(0.2)
+    await wait_listening(ws_port)
     sink = Collect()
     dec = Js8CallNativeDecoder(f"ws://127.0.0.1:{ws_port}/agent", sink)
     dec_task = asyncio.create_task(dec.run())
@@ -397,7 +411,7 @@ async def test_a_reconnecting_adapter_resends_the_hold() -> None:
     agent = Agent(udp_port=0, probe=probe, health_interval_s=0.05)
     ws_port = free_port()
     agent_task = asyncio.create_task(agent.serve("127.0.0.1", ws_port))
-    await asyncio.sleep(0.2)
+    await wait_listening(ws_port)
     first = Js8CallNativeDecoder(f"ws://127.0.0.1:{ws_port}/agent", Collect())
     first.set_selftest_hold(True)
     first_task = asyncio.create_task(first.run())
