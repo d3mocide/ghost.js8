@@ -95,28 +95,30 @@
         <dd class="mono num">{lastDecode ? ago(lastDecode, app.now) : '—'}</dd>
       </div>
     </dl>
-    <div class="receiver-controls">
-      <button
-        type="button"
-        class="btn ghost toggle"
-        aria-expanded={open}
-        aria-controls="receiver-drawer"
-        data-testid="receiver-toggle"
-        onclick={() => (open = !open)}
-      >
-        Receiver <span aria-hidden="true">{open ? '▴' : '▾'}</span>
-      </button>
-      {#if session?.receiver}
+    {#if app.operator}
+      <div class="receiver-controls">
         <button
           type="button"
           class="btn ghost toggle"
-          onclick={() => app.send({ v: 1, type: 'disconnect_receiver' })}>Release</button
+          aria-expanded={open}
+          aria-controls="receiver-drawer"
+          data-testid="receiver-toggle"
+          onclick={() => (open = !open)}
         >
-      {/if}
-    </div>
+          Receiver <span aria-hidden="true">{open ? '▴' : '▾'}</span>
+        </button>
+        {#if session?.receiver}
+          <button
+            type="button"
+            class="btn ghost toggle"
+            onclick={() => app.send({ v: 1, type: 'disconnect_receiver' })}>Release</button
+          >
+        {/if}
+      </div>
+    {/if}
   </div>
 
-  {#if open}
+  {#if open && app.operator}
     <div id="receiver-drawer" class="drawer" role="region" aria-label="Choose a receiver">
       <ReceiverPicker
         bind:this={picker}

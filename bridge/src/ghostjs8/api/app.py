@@ -2,7 +2,8 @@
 
 - ``GET /healthz``  liveness: the bridge process is serving
 - ``GET /readyz``   readiness: full component health (200 when listening, 503 otherwise)
-- ``GET /api/receivers``  cached public receiver directory
+- ``GET /api/receivers``  cached public receiver directory (operators only)
+- ``GET /api/operator/session``, ``POST /api/operator/login|logout``  operator gate
 - ``GET /api/nets``, ``/api/nets/{id}``, ``/api/nets/{id}/waterfall.png``,
   ``/api/nets/{id}/audio.flac``  recorded GhostNet windows
 - ``WS  /ws``       the browser protocol (see contract/messages.py, docs/protocol.md)
@@ -15,16 +16,18 @@ import contextlib
 import json
 import logging
 import re
-from collections.abc import AsyncIterator, Awaitable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 
+from ghostjs8.api.gate import Gate, operator_router
 from ghostjs8.api.hub import Client, HubFull
 from ghostjs8.api.nets import nets_router
+from ghostjs8.api.operator import COOKIE_NAME
 from ghostjs8.contract.messages import (
     ClientMessage,
     DisconnectReceiver,
@@ -126,6 +129,9 @@ def create_app(
     store = station.store
     recordings = Path(settings.recordings_dir)
 
+    gate = Gate(settings, clk)
+    station.operator_available = gate.available
+
     @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         tasks = [asyncio.create_task(station.run(), name="station")]
@@ -141,19 +147,36 @@ def create_app(
 
     app = FastAPI(title="ghost.js8 bridge", lifespan=lifespan, docs_url=None, redoc_url=None)
 
+    @app.middleware("http")
+    async def limit_http(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        return gate.http_limited(request) or await call_next(request)
+
+    app.include_router(
+        operator_router(
+            gate,
+            lambda r: origin_allowed(
+                r.headers.get("origin"), r.headers.get("host"), settings.allowed_origins
+            ),
+        )
+    )
+
     @app.get("/healthz")
     async def healthz() -> JSONResponse:
         return JSONResponse({"status": "ok"})
 
     @app.get("/readyz")
-    async def readyz() -> JSONResponse:
+    async def readyz(request: Request) -> JSONResponse:
         snap = station.health.snapshot()
-        return JSONResponse(
-            json.loads(snap.model_dump_json()),
-            status_code=200 if snap.overall == "listening" else 503,
-        )
+        code = 200 if snap.overall == "listening" else 503
+        if not gate.is_operator(request):
+            # Component detail (errors, versions, self-test) is for operators; probes only
+            # need the verdict.
+            return JSONResponse({"overall": snap.overall}, status_code=code)
+        return JSONResponse(json.loads(snap.model_dump_json()), status_code=code)
 
-    @app.get("/api/receivers")
+    @app.get("/api/receivers", dependencies=[Depends(gate.require_operator)])
     async def api_receivers() -> JSONResponse:
         return JSONResponse(json.loads((await receivers.get()).model_dump_json()))
 
@@ -176,29 +199,44 @@ def create_app(
 
     @app.websocket("/ws")
     async def ws_endpoint(ws: WebSocket) -> None:
-        origin = ws.headers.get("origin")
-        if not origin_allowed(origin, ws.headers.get("host"), settings.allowed_origins):
-            await ws.close(code=1008, reason="origin not allowed")
-            return
-        try:
-            client = station.hub.add()
-        except HubFull:
-            await ws.close(code=1013, reason="session full")
-            return
-        await ws.accept()
-        limiter = RateLimiter(clk)
-        try:
-            station.client_joined(client)
-            async with asyncio.TaskGroup() as tg:
-                tg.create_task(_pump_out(ws, client.queue))
-                tg.create_task(_pump_in(ws, client, station, settings, limiter))
-        except* (WebSocketDisconnect, RuntimeError):
-            pass
-        finally:
-            station.hub.remove(client)
-            station.client_left()
+        await _serve_ws(ws, station, settings, gate, clk)
 
     return app
+
+
+async def _serve_ws(
+    ws: WebSocket, station: Station, settings: Settings, gate: Gate, clk: Clock
+) -> None:
+    origin = ws.headers.get("origin")
+    if not origin_allowed(origin, ws.headers.get("host"), settings.allowed_origins):
+        await ws.close(code=1008, reason="origin not allowed")
+        return
+    ip = gate.ip_of(ws.headers, ws.client.host if ws.client else None)
+    refusal = gate.admit_ws(ip)
+    if refusal is not None:
+        await ws.close(code=1013, reason=refusal)
+        return
+    try:
+        client = station.hub.add()
+    except HubFull:
+        gate.release_ws(ip)
+        await ws.close(code=1013, reason="session full")
+        return
+    client.ip = ip
+    client.operator_until = gate.operator_until(ws.cookies.get(COOKIE_NAME))
+    await ws.accept()
+    limiter = RateLimiter(clk)
+    try:
+        station.client_joined(client)
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(_pump_out(ws, client.queue))
+            tg.create_task(_pump_in(ws, client, station, settings, limiter, clock=clk))
+    except* (WebSocketDisconnect, RuntimeError):
+        pass
+    finally:
+        station.hub.remove(client)
+        station.client_left()
+        gate.release_ws(ip)
 
 
 async def _pump_out(ws: WebSocket, queue: asyncio.Queue[str | bytes]) -> None:
@@ -215,7 +253,13 @@ def _error(client: Client, code: ErrorCode, message: str) -> None:
 
 
 async def _pump_in(
-    ws: WebSocket, client: Client, station: Station, settings: Settings, limiter: RateLimiter
+    ws: WebSocket,
+    client: Client,
+    station: Station,
+    settings: Settings,
+    limiter: RateLimiter,
+    *,
+    clock: Clock,
 ) -> None:
     while True:
         message = await ws.receive()
@@ -245,7 +289,7 @@ async def _pump_in(
         except ValidationError as exc:
             _error(client, "bad_message", exc.errors(include_url=False)[0]["msg"])
             continue
-        await _handle(msg, client, station, settings, limiter)
+        await _handle(msg, client, station, settings, limiter, clock=clock)
 
 
 def _ghostnet_settings(
@@ -273,7 +317,13 @@ def _ghostnet_settings(
 
 
 async def _handle(
-    msg: ClientMessage, client: Client, station: Station, settings: Settings, limiter: RateLimiter
+    msg: ClientMessage,
+    client: Client,
+    station: Station,
+    settings: Settings,
+    limiter: RateLimiter,
+    *,
+    clock: Clock,
 ) -> None:
     if isinstance(msg, Ping):
         client.send_model(Pong(utc=station.clock.utc_now()))
@@ -283,6 +333,12 @@ async def _handle(
         return
     if not isinstance(msg, (Tune, SelectReceiver, DisconnectReceiver, SetGhostNetSettings)):
         return  # ClientHello: informational
+    # The gate: every message below changes state shared by all viewers. Checked per message,
+    # so a session that expires mid-connection stops working without a reconnect.
+    if client.operator_until is None or client.operator_until <= clock.utc_now().timestamp():
+        log.warning("control message refused: not an operator", extra={"ip": client.ip})
+        _error(client, "forbidden", "operator login required")
+        return
     if not limiter.allow():
         _error(client, "rate_limited", "too many control messages; slow down")
         return

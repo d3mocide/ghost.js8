@@ -316,6 +316,7 @@
             "rate_limited",
             "invalid_settings",
             "unavailable",
+            "forbidden",
             "internal"
           ],
           "type": "string"
@@ -699,11 +700,21 @@
             }
           ],
           "default": null
+        },
+        "operator": {
+          "default": false,
+          "type": "boolean"
+        },
+        "operator_available": {
+          "default": false,
+          "type": "boolean"
         }
       },
       "required": [
         "build",
         "limits",
+        "operator",
+        "operator_available",
         "receive_only",
         "server",
         "type",

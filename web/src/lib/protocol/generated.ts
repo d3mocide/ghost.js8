@@ -37,6 +37,8 @@ export interface Hello {
   build: string;
   receive_only: true;
   limits: Limits | null;
+  operator: boolean;
+  operator_available: boolean;
 }
 /**
  * This interface was referenced by `GhostJs8Protocol`'s JSON-Schema
@@ -255,6 +257,7 @@ export interface Error {
     | 'rate_limited'
     | 'invalid_settings'
     | 'unavailable'
+    | 'forbidden'
     | 'internal';
   message: string;
 }

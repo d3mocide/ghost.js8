@@ -181,6 +181,7 @@ class Station(ReceiverSink, DecoderSink):
         self.operator_action: list[Callable[[], None]] = []
         # The GhostNet autopilot's handler for settings edits; None while it is not running.
         # Returns an error message, or None when the change was applied.
+        self.operator_available = False  # set by the API layer: a login is configured
         self.ghostnet_settings: Callable[[SetGhostNetSettings], str | None] | None = None
         # Extra messages sent to each new viewer after the standard ones.
         self.join_messages: list[Callable[[], BaseModel]] = []
@@ -371,6 +372,8 @@ class Station(ReceiverSink, DecoderSink):
         client.send_model(
             Hello(
                 build=__version__,
+                operator=client.operator_until is not None,
+                operator_available=self.operator_available,
                 limits=Limits(
                     max_clients=self.hub.max_clients,
                     audio_sample_rate=AUDIO_SAMPLE_RATE,

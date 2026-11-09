@@ -32,14 +32,14 @@ browser                                   bridge
 
 | `type` | When | Key fields |
 |---|---|---|
-| `hello` | first | `build`, `receive_only: true`, `limits {max_clients, audio_sample_rate, waterfall_max_fps, waterfall_bins}` |
+| `hello` | first | `build`, `receive_only: true`, `operator` (this connection may send control messages), `operator_available` (a login is configured), `limits {max_clients, audio_sample_rate, waterfall_max_fps, waterfall_bins}` |
 | `history` | after hello | `decodes[]`, `stations[]` |
 | `session` | on any change | `state` (`idle` · `connecting` · `connected` · `backoff` · `rejected` · `failed`), `receiver {host, port, name}`, `tuning`, `subscribers`, `reject_reason`, `detail`, `next_retry_utc` |
 | `health` | on change, and every 10 s | `overall` (`listening` · `degraded` · `offline`), `components {bridge, decoder_process, decoder_api, decoder_capture, receiver, audio, waterfall}` each `{state, since, last_seen, detail}`, `last_decode_utc` |
 | `decode` | each decode | `kind` (`activity` · `directed`), `utc` (from the decoder), `text`, `snr_db`, `offset_hz`, `dial_hz`, `freq_hz`, `speed`, `from_call`, `to_call`, `grid` |
 | `station` | station heard / updated | `callsign`, `last_heard_utc`, `snr_db`, `grid` (**valid Maidenhead only**), `offset_hz`, `dial_hz`, `heard_count` |
 | `receiver_status` | every 2 s while connected, and immediately on ADC-overload change | `adc_overload`, `rssi_dbm`, `info` |
-| `error` | bad client message | `code` (`bad_message` · `unsupported_version` · `session_full` · `invalid_tuning` · `invalid_receiver` · `rate_limited` · `internal`), `message` |
+| `error` | bad client message | `code` (`bad_message` · `unsupported_version` · `session_full` · `invalid_tuning` · `invalid_receiver` · `rate_limited` · `invalid_settings` · `unavailable` · `forbidden` (control message from a non-operator) · `internal`), `message` |
 | `pong` | reply to `ping` | `utc` |
 
 ### Semantics worth knowing
@@ -119,7 +119,11 @@ Synthetic rows from `fake-kiwi` exercise transport and rendering only.
 | Path | Response |
 |---|---|
 | `GET /healthz` | `{"status":"ok"}` — liveness |
-| `GET /readyz` | a `health` message body; **200** when `overall = listening`, else **503** |
+| `GET /readyz` | a `health` message body; **200** when `overall = listening`, else **503**. Non-operators get only `{"overall": ...}` |
+| `GET /api/operator/session` | `{operator, available}` |
+| `POST /api/operator/login` | body `{password}`; sets the `HttpOnly` operator cookie. **401** wrong, **429** locked out, **404** not configured |
+| `POST /api/operator/logout` | clears the cookie |
+| `GET /api/receivers` | operator only (**401** otherwise) |
 | `GET /api/receivers` | `ReceiverDirectory` (`fetched_utc`, `stale`, `source`, `receivers[]`) — cached 15 min, stale on error |
 
 ## Versioning
