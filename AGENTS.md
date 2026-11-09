@@ -97,7 +97,20 @@ Toolchain: Python 3.12 via `uv`, Node 22 LTS. Everything is pinned (see
     reconnect (jittered exponential, min 5 s, max 5 min), honor limits and
     rejections.
 
+11. **Operator gate.** Anonymous viewers are read-only. Every control message (`tune`,
+    `select_receiver`, `disconnect_receiver`, `ghostnet_settings`) and `GET /api/receivers`
+    require an operator session, checked in the bridge (`api/gate.py`, `_handle`), never only
+    in the UI. A new control path must be gated and covered in `test_operator_gate.py`. No
+    password hash configured = view-only (fail closed); `GHOSTJS8_OPEN_ACCESS` is for
+    dev/test stacks only. Never put a secret in the web bundle.
+
 ## Gotchas (learned the hard way)
+
+- Operator auth is a signed `HttpOnly` cookie set by `POST /api/operator/login`; the WebSocket
+  upgrade reads it, so after login/logout the browser must **reconnect** (`GhostApp.reconnect`).
+  Sessions are re-checked per message, so expiry takes effect mid-connection. The viewer
+  address for rate limits is the single `X-Forwarded-For` value the bundled nginx sets
+  (`proxy_hops=0`); changing the proxy chain means revisiting `set_real_ip_from` there.
 
 - JS8Call 3.x AppImage fails on Ubuntu 22.04 — use **24.04**. Docker has no FUSE,
   so the AppImage is **unpacked at build time with `unsquashfs`** at the

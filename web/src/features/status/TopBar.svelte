@@ -1,4 +1,5 @@
 <script lang="ts">
+  import OperatorLogin from './OperatorLogin.svelte';
   import Logo from '../../components/Logo.svelte';
   import { useApp } from '../../lib/state/context';
   import { utcTime } from '../../lib/format';
@@ -43,6 +44,7 @@
         {utcTime(new Date(app.now))}<span class="z">Z</span>
       </time>
     </div>
+    <OperatorLogin />
     <button
       type="button"
       class="fx"

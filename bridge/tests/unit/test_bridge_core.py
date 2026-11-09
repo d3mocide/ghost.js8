@@ -409,7 +409,7 @@ async def test_idle_disconnect_and_resume() -> None:
 
 
 def app_with(st: Station, **kw: object) -> TestClient:
-    settings = Settings(db_path="", **kw)  # type: ignore[arg-type]
+    settings = Settings(db_path="", **{"open_access": True, **kw})  # type: ignore[arg-type]
 
     async def fetch(url: str) -> bytes:
         return (

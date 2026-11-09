@@ -375,7 +375,7 @@ def app_for(pilot: GhostNetPilot | None, station: Station, tmp_path: Path) -> Te
     return TestClient(
         create_app(
             station,
-            Settings(db_path=":memory:", recordings_dir=str(tmp_path)),
+            Settings(db_path=":memory:", recordings_dir=str(tmp_path), open_access=True),
             directory=Directory(fetch=fetch),
         )
     )

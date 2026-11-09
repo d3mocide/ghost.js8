@@ -29,6 +29,23 @@ class Settings:
     agent_url: str = "ws://decoder:8074/agent"
     allowed_origins: tuple[str, ...] = ()  # empty: same-origin only (Origin must match Host)
     max_clients: int = 16
+    # Operator gate (docs/operations.md). Anonymous viewers are read-only; control messages
+    # need an operator session. No hash configured = nobody can operate, unless open_access.
+    operator_password_hash: str = ""  # `python -m ghostjs8 hash-password`
+    operator_secret: str = ""  # cookie signing key; empty = random per process
+    operator_session_hours: float = 12.0
+    # Explicit opt-out for local development / the simulated stack: everyone is an operator.
+    open_access: bool = False
+    # X-Forwarded-For entries appended by proxies *behind* the one that set the viewer's
+    # address. The bundled nginx replaces the header with the single real client address, so
+    # 0 is right for the standard stack; only raise it if you put another proxy between nginx
+    # and the bridge.
+    proxy_hops: int = 0
+    max_clients_per_ip: int = 4
+    ws_connects_per_min: int = 20
+    http_requests_per_min: int = 120  # per IP, all /api/* routes
+    download_requests_per_min: int = 12  # per IP, recorded audio / waterfall images
+    login_attempts_per_15min: int = 5  # failed logins per IP before lockout
     # Optional receiver to start listening on at boot (persistent listening).
     receiver_host: str | None = None
     receiver_port: int = 8073
@@ -80,6 +97,22 @@ class Settings:
             agent_url=e.get("GHOSTJS8_AGENT_URL", cls.agent_url),
             allowed_origins=origins,
             max_clients=_int(e, "GHOSTJS8_MAX_CLIENTS_PER_SESSION", cls.max_clients),
+            operator_password_hash=e.get("GHOSTJS8_OPERATOR_PASSWORD_HASH", "").strip(),
+            operator_secret=e.get("GHOSTJS8_OPERATOR_SECRET", "").strip(),
+            operator_session_hours=float(e.get("GHOSTJS8_OPERATOR_SESSION_HOURS", "12") or 12),
+            open_access=_bool(e, "GHOSTJS8_OPEN_ACCESS", default=False),
+            proxy_hops=_int(e, "GHOSTJS8_PROXY_HOPS", cls.proxy_hops),
+            max_clients_per_ip=_int(e, "GHOSTJS8_MAX_CLIENTS_PER_IP", cls.max_clients_per_ip),
+            ws_connects_per_min=_int(e, "GHOSTJS8_WS_CONNECTS_PER_MIN", cls.ws_connects_per_min),
+            http_requests_per_min=_int(
+                e, "GHOSTJS8_HTTP_REQUESTS_PER_MIN", cls.http_requests_per_min
+            ),
+            download_requests_per_min=_int(
+                e, "GHOSTJS8_DOWNLOADS_PER_MIN", cls.download_requests_per_min
+            ),
+            login_attempts_per_15min=_int(
+                e, "GHOSTJS8_LOGIN_ATTEMPTS", cls.login_attempts_per_15min
+            ),
             receiver_host=e.get("GHOSTJS8_RECEIVER_HOST") or None,
             receiver_port=_int(e, "GHOSTJS8_RECEIVER_PORT", cls.receiver_port),
             receiver_password=e.get("GHOSTJS8_RECEIVER_PASSWORD", ""),

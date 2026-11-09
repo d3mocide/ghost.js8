@@ -39,6 +39,7 @@ services:
     image: ghostjs8-bridge:test
     environment:
       GHOSTJS8_AGENT_URL: ws://decoder:8074/agent
+      GHOSTJS8_OPEN_ACCESS: "true"  # isolated test network: the acceptance client drives control messages
       GHOSTJS8_RECEIVER_HOST: fake-kiwi
       GHOSTJS8_RECEIVER_PORT: "8073"
       GHOSTJS8_DIAL_HZ: "14078000"

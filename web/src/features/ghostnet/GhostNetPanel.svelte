@@ -134,7 +134,7 @@
       {#if g.detail}<p class="warn small">{g.detail}</p>{/if}
     {/if}
 
-    <GhostNetSettings {g} />
+    {#if app.operator}<GhostNetSettings {g} />{/if}
   {/if}
 
   <h3 class="caps">Recorded nets</h3>

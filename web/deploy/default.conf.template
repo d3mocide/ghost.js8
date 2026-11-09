@@ -7,6 +7,25 @@ map $http_upgrade $connection_upgrade {
     ''      close;
 }
 
+# Viewer address. The outer proxy (Caddy / NPM) is on a private address and appends the real
+# client to X-Forwarded-For; real_ip_recursive picks the right-most entry that is not one of
+# these trusted hops, so a viewer cannot fake it. If your outer proxy is on a public address,
+# add it here.
+set_real_ip_from 127.0.0.1;
+set_real_ip_from 10.0.0.0/8;
+set_real_ip_from 172.16.0.0/12;
+set_real_ip_from 192.168.0.0/16;
+real_ip_header X-Forwarded-For;
+real_ip_recursive on;
+
+# Per-address limits (the bridge enforces its own as well; see docs/operations.md).
+limit_req_zone $binary_remote_addr zone=ghost_api:10m rate=60r/m;
+limit_req_zone $binary_remote_addr zone=ghost_login:10m rate=6r/m;
+limit_req_zone $binary_remote_addr zone=ghost_ws:10m rate=20r/m;
+limit_conn_zone $binary_remote_addr zone=ghost_conn:10m;
+limit_req_status 429;
+limit_conn_status 429;
+
 server {
     listen 8080;
     server_name _;
@@ -28,23 +47,37 @@ server {
     }
 
     location = /ws {
+        limit_req zone=ghost_ws burst=10 nodelay;
+        limit_conn ghost_conn 8;
         proxy_pass $bridge;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
         proxy_set_header Host $http_host;  # keep the port: the bridge compares it with Origin
         proxy_set_header Origin $http_origin;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $remote_addr;  # the bridge trusts exactly this one
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
         proxy_buffering off;
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
     }
 
-    location /api/ {
+    # Operator login: brute-force guessing is also throttled and locked out in the bridge.
+    location = /api/operator/login {
+        limit_req zone=ghost_login burst=3 nodelay;
         proxy_pass $bridge;
         proxy_set_header Host $http_host;  # keep the port: the bridge compares it with Origin
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Origin $http_origin;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+    }
+
+    location /api/ {
+        limit_req zone=ghost_api burst=60 nodelay;
+        proxy_pass $bridge;
+        proxy_set_header Host $http_host;  # keep the port: the bridge compares it with Origin
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
     }
 
     location = /readyz {
