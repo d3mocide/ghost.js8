@@ -31,6 +31,9 @@ class Client:
     audio: bool = False
     waterfall: bool = False
     dropped: int = 0
+    #: Epoch second this connection's operator session ends; None = anonymous viewer.
+    operator_until: float | None = None
+    ip: str = ""
     closed: asyncio.Event = field(default_factory=asyncio.Event)
 
     def send(self, payload: Outgoing) -> None:

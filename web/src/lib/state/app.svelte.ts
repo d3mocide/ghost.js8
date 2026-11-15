@@ -54,6 +54,21 @@ export class GhostApp {
     };
   }
 
+  /** May this connection change shared state? Decided by the bridge (hello.operator). */
+  get operator(): boolean {
+    return this.state.hello?.operator ?? false;
+  }
+
+  /** Does the bridge have an operator password at all? Gates showing the login. */
+  get operatorAvailable(): boolean {
+    return this.state.hello?.operator_available ?? false;
+  }
+
+  /** Reconnect so the bridge re-reads the operator cookie (after login / logout). */
+  reconnect(): void {
+    this.client.reconnect();
+  }
+
   start(): void {
     this.client.start();
     this.clock = setInterval(() => {

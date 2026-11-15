@@ -122,7 +122,12 @@
 
 <Panel id="radio" code="RADIO" title="Radio" slim>
   <div class="radio">
-    <div class="tune">
+    <div
+      class="tune"
+      class:locked={!app.operator}
+      inert={!app.operator}
+      title={app.operator ? undefined : 'Tuning is shared by all viewers: operator login required'}
+    >
       <div class="line">
         <div class="dial" role="group" aria-label="Dial frequency">
           <button
@@ -310,6 +315,9 @@
   .radio {
     display: grid;
     gap: var(--g-space-4);
+  }
+  .tune.locked {
+    opacity: 0.55;
   }
   .tune {
     min-width: 0;

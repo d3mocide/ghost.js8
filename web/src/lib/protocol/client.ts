@@ -91,6 +91,13 @@ export class BridgeClient {
     this.handlers.onLink('closed');
   }
 
+  /** Drop the socket and reconnect promptly (the cookie changed). No-op when stopped. */
+  reconnect(): void {
+    if (this.stopped || this.socket === null) return;
+    this.attempt = 0;
+    this.socket.close(1000, 'reconnect');
+  }
+
   send(message: ClientMessage): boolean {
     const s = this.socket;
     if (!s || s.readyState !== 1) return false;

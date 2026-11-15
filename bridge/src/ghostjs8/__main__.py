@@ -106,6 +106,25 @@ def _bridge() -> None:
     )
 
 
+def _hash_password() -> None:
+    """Print the value for GHOSTJS8_OPERATOR_PASSWORD_HASH. Reads the password without echo."""
+    import getpass
+
+    from ghostjs8.api.operator import hash_password
+
+    if sys.stdin.isatty():
+        first = getpass.getpass("Operator password: ")
+        if first != getpass.getpass("Repeat: "):
+            sys.stderr.write("passwords differ\n")
+            sys.exit(1)
+    else:
+        first = sys.stdin.readline().rstrip("\r\n")
+    if len(first) < 12:
+        sys.stderr.write("use at least 12 characters (a passphrase is fine)\n")
+        sys.exit(1)
+    sys.stdout.write(hash_password(first) + "\n")
+
+
 def main() -> None:
     cmd, rest = (sys.argv[1], sys.argv[2:]) if len(sys.argv) > 1 else ("", [])
     if cmd == "bridge":
@@ -126,13 +145,15 @@ def main() -> None:
         from ghostjs8.sim.seed_net import main as seed_main
 
         seed_main(rest)
+    elif cmd == "hash-password":
+        _hash_password()
     elif cmd == "acceptance":
         from ghostjs8.sim.acceptance import main as acceptance_main
 
         sys.exit(acceptance_main(rest))
     else:
         sys.stderr.write(
-            "usage: python -m ghostjs8 {bridge|agent|fake-kiwi|fake-agent|seed-net|acceptance} [args]\n"
+            "usage: python -m ghostjs8 {bridge|hash-password|agent|fake-kiwi|fake-agent|seed-net|acceptance} [args]\n"
         )
         sys.exit(2)
 

@@ -3,6 +3,17 @@
 All notable changes. Versions follow SemVer; the protocol version (`v`) is
 tracked separately in `docs/protocol.md`.
 
+## [Unreleased]
+
+- **Operator gate for public deployments.** Viewers are read-only; tuning, receiver
+  selection, GhostNet settings and the receiver directory need an operator password
+  (`GHOSTJS8_OPERATOR_PASSWORD_HASH`, `python -m ghostjs8 hash-password`), enforced in the
+  bridge with a signed `HttpOnly` cookie. With no password configured the station is
+  view-only; `GHOSTJS8_OPEN_ACCESS=true` restores the old behaviour for dev/test stacks.
+- Per-address rate limits (nginx and bridge): WebSocket connects and concurrent sockets,
+  `/api/*`, recorded-audio downloads, login attempts with lockout. `/readyz` detail is
+  operator only. Protocol: `hello.operator`, `hello.operator_available`, error `forbidden`.
+
 ## [0.2.0] — 2026-10-30
 
 - **Compose now pulls the published images by default** (`ghcr.io/d3mocide/ghostjs8-*`,

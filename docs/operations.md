@@ -13,7 +13,67 @@ To build from this checkout instead (development), use `make images && make dev`
 adds the `build:` blocks and tags the images `ghostjs8-*:local`.
 
 Only the `web` container publishes a port (default `127.0.0.1:8080`). Point
-your reverse proxy at it; it terminates TLS and handles authentication.
+your reverse proxy at it; it terminates TLS. Access control is built in: see
+[Public deployment](#public-deployment-operator-mode).
+
+### Public deployment (operator mode)
+
+Anyone who can open the page is a **viewer**: they can watch decodes, the waterfall, the
+map and stations, and listen to the audio. Everything that changes state shared by all
+viewers needs an **operator** session, enforced in the bridge (not just hidden in the UI):
+
+| Operator only | Why |
+|---|---|
+| `tune`, `select_receiver`, `disconnect_receiver` | one shared decoder and receiver; also stops your VPS being used to dial arbitrary hosts |
+| `ghostnet_settings` | autopilot, park, recording, per-window receivers |
+| `GET /api/receivers` | the receiver directory is only used by the picker |
+| full `GET /readyz` detail | viewers and probes get only `{"overall": ...}` |
+
+With **no password configured the station is view-only for everyone** (fail closed), and
+the bridge logs a warning. Set one:
+
+```sh
+git clone https://github.com/d3mocide/ghost.js8 && cd ghost.js8
+cp .env.example .env
+docker compose run --rm bridge python -m ghostjs8 hash-password   # prompts, prints the hash
+```
+
+Put the printed `scrypt:...` line in `.env` as `GHOSTJS8_OPERATOR_PASSWORD_HASH=` (it has no
+`$`, so compose will not mangle it), set `GHOSTJS8_ALLOWED_ORIGINS` to your public URL, then
+`make pull && make up`. Use a passphrase of at least 12 characters. To update later:
+`git pull && make pull && make up`.
+
+An operator clicks **Operator** in the top bar and enters the password. The bridge sets a
+signed `HttpOnly; SameSite=Strict` cookie (`Secure` over HTTPS) valid for
+`GHOSTJS8_OPERATOR_SESSION_HOURS` (default 12). Changing the hash signs every operator
+out; set `GHOSTJS8_OPERATOR_SECRET` to keep sessions across bridge restarts (otherwise a
+random key is generated at start). Use HTTPS: the password crosses the wire at login.
+
+`GHOSTJS8_OPEN_ACCESS=true` restores "everyone is an operator". It is for the simulated
+stack and isolated test networks only.
+
+**Receiver at boot:** `GHOSTJS8_RECEIVER_HOST` (trusted, not subject to the viewer address
+policy) and the GhostNet env settings still work with no operator at all, so a public
+instance can run unattended on a fixed receiver or the autopilot.
+
+#### Rate limits
+
+Per viewer address (all configurable, see `.env.example`), in both nginx and the bridge:
+
+- WebSocket: 20 connects/min and 4 open sockets per address.
+- `/api/*`: 120 requests/min; recorded audio/waterfall downloads 12/min.
+- Operator login: 5 failed attempts per 15 min locks that address out (429 with
+  `Retry-After`), and 50 failures from all addresses combined pause logins for everyone.
+  Failures are logged with the address.
+
+The viewer address comes from `X-Forwarded-For`. The bundled nginx trusts private-range
+proxies (your Caddy / NPM on the same host or Docker network), takes the right-most
+untrusted entry, and passes exactly that one address to the bridge. If your outer proxy has
+a public address, add it to `set_real_ip_from` in `web/deploy/default.conf.template`.
+Otherwise every viewer shares one budget.
+
+Recommended on the VPS as well: firewall everything except 80/443 and SSH, keep
+`GHOSTJS8_HTTP_BIND=127.0.0.1`, and do not publish the decoder or bridge ports.
 
 ### Published images and ARM
 
@@ -64,18 +124,16 @@ WebSocket upgrades and allow long-lived connections.
 
 ```caddy
 ghost.example.net {
-    basic_auth {
-        operator $2a$14$...   # caddy hash-password
-    }
     reverse_proxy 127.0.0.1:8080
 }
 ```
 
-Caddy proxies WebSockets automatically.
+Caddy proxies WebSockets automatically. Do not add `basic_auth` for a public viewer page:
+the operator password is the gate. (For a fully private instance, put an auth layer in front
+and leave the operator password set.)
 
 **Nginx Proxy Manager:** add a proxy host to `http://<docker-host>:8080`, enable
-*Websockets Support*, add an Access List for authentication, and in *Advanced*
-set `proxy_read_timeout 3600s;`.
+*Websockets Support* and *Force SSL*, and in *Advanced* set `proxy_read_timeout 3600s;`.
 
 Set `GHOSTJS8_ALLOWED_ORIGINS=https://ghost.example.net` so other sites cannot
 open the WebSocket from a visitor's browser.

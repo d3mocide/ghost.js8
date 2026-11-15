@@ -97,3 +97,29 @@ describe('BridgeClient', () => {
     expect(sockets).toHaveLength(2); // no reconnect after stop
   });
 });
+
+describe('reconnect (operator login / logout)', () => {
+  it('closes the live socket so the reconnect path re-reads the cookie', () => {
+    vi.useFakeTimers();
+    const sockets: FakeSocket[] = [];
+    const client = new BridgeClient(
+      'ws://x/ws',
+      { onMessage: () => undefined, onFrame: () => undefined, onLink: () => undefined },
+      () => {
+        const s = new FakeSocket();
+        sockets.push(s);
+        return s;
+      },
+    );
+    client.reconnect(); // not started: nothing to do
+    expect(sockets).toHaveLength(0);
+    client.start();
+    sockets[0]?.open();
+    client.reconnect();
+    expect(sockets[0]?.closed).toBe(1000);
+    sockets[0]?.drop(); // the browser fires close
+    vi.advanceTimersByTime(2000);
+    expect(sockets).toHaveLength(2);
+    client.stop();
+  });
+});

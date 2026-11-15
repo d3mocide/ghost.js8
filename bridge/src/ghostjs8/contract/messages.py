@@ -34,6 +34,7 @@ ErrorCode = Literal[
     "rate_limited",
     "invalid_settings",
     "unavailable",
+    "forbidden",
     "internal",
 ]
 
@@ -99,6 +100,10 @@ class Hello(_Msg):
     build: str
     receive_only: Literal[True] = True
     limits: Limits | None = None
+    # Operator gate: whether this connection may send control messages, and whether the bridge
+    # has a password configured at all (the UI shows the login only when it does).
+    operator: bool = False
+    operator_available: bool = False
 
 
 class Health(_Msg):
